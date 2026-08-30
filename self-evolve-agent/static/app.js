@@ -451,7 +451,7 @@ function renderCharts(byType) {
       options: {
         responsive: true,
         plugins: {
-          legend: { labels: { color: "#94a3b8", font: { family: "Inter", size: 11 } } },
+          legend: { labels: { color: "#334155", font: { family: "Inter", size: 11, weight: "bold" } } },
         },
         scales: {
           y: {
@@ -460,13 +460,14 @@ function renderCharts(byType) {
             ticks: {
               stepSize: 1,
               callback: (val) => (val === 1 ? "✓ Solved" : "✗ Failed"),
-              color: "#64748b",
+              color: "#475569",
+              font: { weight: "bold" }
             },
-            grid: { color: "rgba(255,255,255,0.05)" },
+            grid: { color: "rgba(0,0,0,0.06)" },
           },
           x: {
-            ticks: { color: "#64748b" },
-            grid: { color: "rgba(255,255,255,0.05)" },
+            ticks: { color: "#475569", font: { weight: "bold" } },
+            grid: { color: "rgba(0,0,0,0.06)" },
           },
         },
       },
@@ -484,14 +485,15 @@ function renderCharts(byType) {
         labels: taskKeys,
         datasets: [{
           data: counts.length ? counts : [1],
-          backgroundColor: ["#00d4ff", "#8b5cf6", "#10b981", "#f97316", "#f43f5e", "#eab308"],
-          borderWidth: 0,
+          backgroundColor: ["#0284c7", "#7c3aed", "#10b981", "#ea580c", "#e11d48", "#ca8a04"],
+          borderWidth: 2,
+          borderColor: "#ffffff"
         }],
       },
       options: {
         responsive: true,
         plugins: {
-          legend: { position: "right", labels: { color: "#94a3b8", font: { size: 10 } } },
+          legend: { position: "right", labels: { color: "#334155", font: { size: 10, weight: "bold" } } },
         },
       },
     });
@@ -509,16 +511,16 @@ function renderCharts(byType) {
         datasets: [{
           label: "Runs",
           data: totalRunsPerType,
-          backgroundColor: "#00d4ff88",
-          borderRadius: 4,
+          backgroundColor: "#0284c7cc",
+          borderRadius: 6,
         }],
       },
       options: {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-          y: { ticks: { color: "#64748b" }, grid: { display: false } },
-          x: { ticks: { color: "#64748b", font: { size: 9 } }, grid: { display: false } },
+          y: { ticks: { color: "#475569" }, grid: { color: "rgba(0,0,0,0.04)" } },
+          x: { ticks: { color: "#475569", font: { size: 9, weight: "bold" } }, grid: { display: false } },
         },
       },
     });
