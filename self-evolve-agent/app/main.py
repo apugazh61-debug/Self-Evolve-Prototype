@@ -24,6 +24,7 @@ from .schemas import (
     ToTRequest, ToTResponse, DebateRequest, DebateResponse,
     SelfPlayRequest, SelfPlayResponse, CustomToolCreateRequest, CustomToolExecuteRequest, CustomToolOut,
     VisionRequest, VisionResponse, PatchBenchmarkRequest,
+    SwarmRequest, RouterRequest, ReplayForkRequest,
 )
 from . import tasks as task_bank
 from .tot_engine import TreeOfThoughtsEngine
@@ -33,6 +34,11 @@ from .tool_maker import synthesize_and_register_tool, execute_custom_tool, seed_
 from .vision_agent import VisionDiagramAgent
 from .code_patcher import SelfCodePatcher
 from .report_gen import generate_executive_report_html
+from .swarm_dag import SwarmOrchestrator
+from .cognitive_memory import cognitive_memory
+from .llm_router import llm_router
+from .time_travel import time_travel_debugger
+from .fuzzer import adversarial_fuzzer
 from .vector_memory import semantic_search, VECTOR_MEMORY_ENABLED
 from .ws_manager import manager as ws_manager
 
@@ -51,8 +57,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Self-Evolve API v1.0",
-    description="Autonomous Agentic AI platform with 3D Galaxy, Multi-Modal Vision, Tree-of-Thoughts, Multi-Agent Debate Arena, Curiosity Self-Play, and Tool Forge.",
+    title="Self-Evolve Enterprise API v1.0",
+    description="Enterprise Autonomous Agentic AI platform with DAG Swarm Orchestration, 4-Tier Cognitive Memory, Multi-LLM Dynamic Router, Time-Travel Debugger, and Adversarial Fuzzer.",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -71,6 +77,7 @@ debate_arena = DebateArena()
 self_play_engine = SelfPlayEngine()
 vision_agent = VisionDiagramAgent()
 code_patcher = SelfCodePatcher()
+swarm_orchestrator = SwarmOrchestrator()
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +156,58 @@ async def run_agent(req: RunRequest):
             raise HTTPException(status_code=500, detail=event["data"])
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Asynchronous Dynamic DAG Agent Swarm
+# ---------------------------------------------------------------------------
+@app.post("/api/swarm/execute")
+async def execute_swarm(req: SwarmRequest):
+    await ws_manager.broadcast("swarm_start", {"goal": req.goal})
+    res = await swarm_orchestrator.plan_and_execute(req.goal)
+    await ws_manager.broadcast("swarm_complete", {"agents": res["total_agents"], "latency_ms": res["total_latency_ms"]})
+    return res
+
+
+# ---------------------------------------------------------------------------
+# 4-Tier Cognitive Long-Term Memory (H-LTM)
+# ---------------------------------------------------------------------------
+@app.get("/api/cognitive-memory/status")
+def get_cognitive_memory_status():
+    return cognitive_memory.get_system_status()
+
+
+@app.post("/api/cognitive-memory/consolidate")
+def consolidate_cognitive_memory():
+    return cognitive_memory.consolidate()
+
+
+# ---------------------------------------------------------------------------
+# Multi-LLM Dynamic Router & Cost Optimizer
+# ---------------------------------------------------------------------------
+@app.post("/api/router/evaluate")
+def evaluate_llm_routing(req: RouterRequest):
+    return llm_router.evaluate_and_route(task_type=req.task_type, prompt=req.prompt, max_latency_ms=req.max_latency_ms)
+
+
+# ---------------------------------------------------------------------------
+# Time-Travel Replay & Snapshot Debugger
+# ---------------------------------------------------------------------------
+@app.post("/api/replay/fork")
+def fork_time_travel_timeline(req: ReplayForkRequest):
+    return time_travel_debugger.fork_timeline(
+        task_type=req.task_type,
+        target_step=req.target_step,
+        injected_lesson=req.injected_lesson,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Adversarial Red-Team Stress Fuzzer
+# ---------------------------------------------------------------------------
+@app.post("/api/fuzzer/run")
+def run_adversarial_fuzzer():
+    return adversarial_fuzzer.run_stress_suite()
 
 
 # ---------------------------------------------------------------------------

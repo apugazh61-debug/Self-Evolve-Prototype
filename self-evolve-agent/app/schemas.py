@@ -270,6 +270,22 @@ class PatchBenchmarkRequest(BaseModel):
     target_area: str = "percentage_discount"
 
 
+class SwarmRequest(BaseModel):
+    goal: str = "Enterprise Quantitative Audit"
+
+
+class RouterRequest(BaseModel):
+    task_type: str = "percentage_discount"
+    prompt: str = ""
+    max_latency_ms: int = 500
+
+
+class ReplayForkRequest(BaseModel):
+    task_type: str = "percentage_discount"
+    target_step: int = 1
+    injected_lesson: str = "Always verify fractional percentages with pre-multiplication."
+
+
 class ExportData(BaseModel):
     version: str = "1.0"
     lessons: List[LessonOut]
