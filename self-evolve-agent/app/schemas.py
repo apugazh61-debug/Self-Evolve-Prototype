@@ -286,6 +286,22 @@ class ReplayForkRequest(BaseModel):
     injected_lesson: str = "Always verify fractional percentages with pre-multiplication."
 
 
+class CSuiteRequest(BaseModel):
+    task_type: str = "compound_interest"
+    goal_brief: str = "Corporate Financial Audit"
+
+
+class MCTSRequest(BaseModel):
+    task_type: str = "percentage_discount"
+    simulations: int = 50
+
+
+class WebhookPRRequest(BaseModel):
+    patch_title: str = "Patch #01: Strict Decimal Normalization"
+    code_diff: str = "- price - discount\n+ price * (1 - discount/100)"
+    task_type: str = "percentage_discount"
+
+
 class ExportData(BaseModel):
     version: str = "1.0"
     lessons: List[LessonOut]

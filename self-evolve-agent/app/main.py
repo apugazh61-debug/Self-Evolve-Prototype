@@ -25,6 +25,7 @@ from .schemas import (
     SelfPlayRequest, SelfPlayResponse, CustomToolCreateRequest, CustomToolExecuteRequest, CustomToolOut,
     VisionRequest, VisionResponse, PatchBenchmarkRequest,
     SwarmRequest, RouterRequest, ReplayForkRequest,
+    CSuiteRequest, MCTSRequest, WebhookPRRequest,
 )
 from . import tasks as task_bank
 from .tot_engine import TreeOfThoughtsEngine
@@ -39,6 +40,12 @@ from .cognitive_memory import cognitive_memory
 from .llm_router import llm_router
 from .time_travel import time_travel_debugger
 from .fuzzer import adversarial_fuzzer
+from .swarm_os import c_suite_swarm_os
+from .graph_rag import graph_rag
+from .mcts_engine import mcts_engine
+from .synthetic_compiler import synthetic_compiler
+from .merkle_vault import merkle_vault
+from .webhook_bot import webhook_bot
 from .vector_memory import semantic_search, VECTOR_MEMORY_ENABLED
 from .ws_manager import manager as ws_manager
 
@@ -57,8 +64,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Self-Evolve Enterprise API v1.0",
-    description="Enterprise Autonomous Agentic AI platform with DAG Swarm Orchestration, 4-Tier Cognitive Memory, Multi-LLM Dynamic Router, Time-Travel Debugger, and Adversarial Fuzzer.",
+    title="Self-Evolve Enterprise OS API v1.0",
+    description="Autonomous Agentic AI Platform featuring C-Suite Swarm OS, GraphRAG Knowledge Graph, MCTS AlphaGo Engine, Merkle Audit Vault, and Auto-PR Bot.",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -105,6 +112,7 @@ def health():
         "vector_memory": VECTOR_MEMORY_ENABLED,
         "ws_connections": ws_manager.connection_count,
         "custom_tools_count": len(memory.get_custom_tools()),
+        "merkle_vault_blocks": len(merkle_vault.chain),
     }
 
 
@@ -138,6 +146,8 @@ async def run_agent(req: RunRequest):
                 agent_mode=req.agent_mode,
                 on_event=on_event,
             )
+            is_success = result.get("success", False) if isinstance(result, dict) else getattr(result, "success", False)
+            merkle_vault.record_decision("AGENT_RUN_COMPLETED", {"task_type": req.task_type, "success": is_success})
             loop.call_soon_threadsafe(queue.put_nowait, {"type": "_result", "data": result})
         except Exception as exc:
             loop.call_soon_threadsafe(queue.put_nowait, {"type": "_error", "data": str(exc)})
@@ -156,6 +166,72 @@ async def run_agent(req: RunRequest):
             raise HTTPException(status_code=500, detail=event["data"])
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# C-Suite Executive Swarm OS
+# ---------------------------------------------------------------------------
+@app.post("/api/swarm-os/dispatch")
+async def dispatch_c_suite_os(req: CSuiteRequest):
+    await ws_manager.broadcast("c_suite_start", {"task_type": req.task_type})
+    res = c_suite_swarm_os.dispatch_c_suite(req.task_type, req.goal_brief)
+    merkle_vault.record_decision("C_SUITE_DISPATCH", {"task_type": req.task_type, "certified": res["consensus_certified"]})
+    await ws_manager.broadcast("c_suite_complete", {"task_type": req.task_type, "certified": res["consensus_certified"]})
+    return res
+
+
+# ---------------------------------------------------------------------------
+# GraphRAG Knowledge Graph
+# ---------------------------------------------------------------------------
+@app.get("/api/graph-rag/graph")
+def get_graph_rag_topology():
+    return graph_rag.export_graph_topology()
+
+
+@app.get("/api/graph-rag/query")
+def query_graph_rag(node_id: str = "concept-percentage", max_hops: int = 2):
+    return graph_rag.multi_hop_traverse(node_id, max_hops)
+
+
+# ---------------------------------------------------------------------------
+# Monte Carlo Tree Search (MCTS)
+# ---------------------------------------------------------------------------
+@app.post("/api/mcts/search")
+def search_mcts(req: MCTSRequest):
+    return mcts_engine.search(req.task_type)
+
+
+# ---------------------------------------------------------------------------
+# Synthetic Dataset & DPO Compiler
+# ---------------------------------------------------------------------------
+@app.get("/api/synthetic/dpo-dataset")
+def export_synthetic_dpo_dataset():
+    return synthetic_compiler.export_jsonl_dataset()
+
+
+# ---------------------------------------------------------------------------
+# Cryptographic Merkle Audit Vault
+# ---------------------------------------------------------------------------
+@app.get("/api/vault/audit-chain")
+def get_audit_chain(limit: int = 20):
+    return merkle_vault.get_audit_trail(limit=limit)
+
+
+@app.get("/api/vault/verify")
+def verify_audit_vault():
+    return merkle_vault.verify_audit_integrity()
+
+
+# ---------------------------------------------------------------------------
+# Webhook & GitHub Auto-PR Dispatcher
+# ---------------------------------------------------------------------------
+@app.post("/api/webhooks/dispatch-pr")
+def dispatch_github_pr(req: WebhookPRRequest):
+    return webhook_bot.dispatch_github_auto_pr(
+        patch_title=req.patch_title,
+        code_diff=req.code_diff,
+        task_type=req.task_type,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -408,6 +484,7 @@ async def websocket_endpoint(websocket: WebSocket):
             "vector_memory": VECTOR_MEMORY_ENABLED,
             "task_count": len(task_bank.GENERATORS),
             "custom_tools": len(memory.get_custom_tools()),
+            "merkle_blocks": len(merkle_vault.chain),
         })
         while True:
             data = await websocket.receive_text()
