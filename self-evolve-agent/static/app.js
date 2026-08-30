@@ -360,6 +360,17 @@ function setPipelineNodeState(id, state) {
 function switchTab(tabId) {
   if (window.sound) window.sound.click();
 
+  const coreMoreContainer = document.getElementById("coreMoreContainer");
+  const coreMoreToggleText = document.getElementById("coreMoreToggleText");
+  const coreMoreToggleIcon = document.getElementById("coreMoreToggleIcon");
+  const hiddenTabs = ["vision", "tools", "selfplay", "galaxy", "patcher"];
+
+  if (hiddenTabs.includes(tabId) && coreMoreContainer && coreMoreContainer.style.display === "none") {
+    coreMoreContainer.style.display = "flex";
+    if (coreMoreToggleText) coreMoreToggleText.textContent = "− Show Less";
+    if (coreMoreToggleIcon) coreMoreToggleIcon.style.transform = "rotate(180deg)";
+  }
+
   elements.navItems.forEach((btn) => {
     const btnTab = btn.getAttribute("data-tab");
     if (btnTab === tabId) {
@@ -407,10 +418,32 @@ function switchTab(tabId) {
   }, 100);
 }
 
+// Core Systems More / Less Collapsible Toggle
+const coreMoreToggleBtn = document.getElementById("coreMoreToggleBtn");
+const coreMoreContainer = document.getElementById("coreMoreContainer");
+const coreMoreToggleText = document.getElementById("coreMoreToggleText");
+const coreMoreToggleIcon = document.getElementById("coreMoreToggleIcon");
+
+if (coreMoreToggleBtn && coreMoreContainer) {
+  coreMoreToggleBtn.addEventListener("click", () => {
+    if (window.sound) window.sound.click();
+    const isHidden = coreMoreContainer.style.display === "none";
+    if (isHidden) {
+      coreMoreContainer.style.display = "flex";
+      coreMoreToggleText.textContent = "− Show Less";
+      coreMoreToggleIcon.style.transform = "rotate(180deg)";
+    } else {
+      coreMoreContainer.style.display = "none";
+      coreMoreToggleText.textContent = "+ More Systems (5)";
+      coreMoreToggleIcon.style.transform = "rotate(0deg)";
+    }
+  });
+}
+
 elements.navItems.forEach((btn) => {
   btn.addEventListener("click", () => {
     const target = btn.getAttribute("data-tab");
-    switchTab(target);
+    if (target) switchTab(target);
   });
 });
 
