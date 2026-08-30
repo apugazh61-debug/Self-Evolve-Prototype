@@ -363,7 +363,7 @@ function switchTab(tabId) {
   const coreMoreContainer = document.getElementById("coreMoreContainer");
   const coreMoreToggleText = document.getElementById("coreMoreToggleText");
   const coreMoreToggleIcon = document.getElementById("coreMoreToggleIcon");
-  const hiddenTabs = ["vision", "tools", "selfplay", "galaxy", "patcher"];
+  const hiddenTabs = ["csuite", "mcts", "vault", "vision", "tools", "selfplay", "galaxy", "patcher"];
 
   if (hiddenTabs.includes(tabId) && coreMoreContainer && coreMoreContainer.style.display === "none") {
     coreMoreContainer.style.display = "flex";
@@ -404,6 +404,8 @@ function switchTab(tabId) {
     loadCustomTools();
   } else if (tabId === "selfplay") {
     loadSelfPlayHistory();
+  } else if (tabId === "vault") {
+    loadMerkleVault();
   } else if (tabId === "galaxy") {
     if (!galaxyInstance && window.Galaxy3D) {
       galaxyInstance = new Galaxy3D("galaxyCanvasContainer");
@@ -434,7 +436,7 @@ if (coreMoreToggleBtn && coreMoreContainer) {
       coreMoreToggleIcon.style.transform = "rotate(180deg)";
     } else {
       coreMoreContainer.style.display = "none";
-      coreMoreToggleText.textContent = "+ More Systems (5)";
+      coreMoreToggleText.textContent = "+ More Systems (8)";
       coreMoreToggleIcon.style.transform = "rotate(0deg)";
     }
   });
@@ -1220,7 +1222,13 @@ async function loadTasks() {
     if (elements.taskType) elements.taskType.innerHTML = optionsHtml;
     if (elements.totTaskType) elements.totTaskType.innerHTML = optionsHtml;
     if (elements.debateTaskType) elements.debateTaskType.innerHTML = optionsHtml;
-    elements.settingsTaskCount.textContent = tasks.length;
+    
+    const csSelect = document.getElementById("csuiteTaskSelect");
+    if (csSelect) csSelect.innerHTML = optionsHtml;
+    const mctsSelect = document.getElementById("mctsTaskSelect");
+    if (mctsSelect) mctsSelect.innerHTML = optionsHtml;
+
+    if (elements.settingsTaskCount) elements.settingsTaskCount.textContent = tasks.length;
   } catch (err) {
     console.error("Failed to load tasks", err);
   }
@@ -1335,6 +1343,261 @@ async function loadMeta() {
 
 async function refreshAll() {
   await Promise.all([loadHealth(), loadStats(), loadMemory(), loadMeta()]);
+}
+
+// ---------------------------------------------------------------------------
+// C-Suite Swarm OS Council
+// ---------------------------------------------------------------------------
+const csuiteDispatchBtn = document.getElementById("csuiteDispatchBtn");
+const csuiteTaskSelect = document.getElementById("csuiteTaskSelect");
+const csuiteCertChip = document.getElementById("csuiteCertChip");
+const csuiteLatencyBadge = document.getElementById("csuiteLatencyBadge");
+const csuiteCouncilContainer = document.getElementById("csuiteCouncilContainer");
+
+if (csuiteDispatchBtn) {
+  csuiteDispatchBtn.addEventListener("click", async () => {
+    if (window.sound) window.sound.click();
+    const task_type = csuiteTaskSelect ? csuiteTaskSelect.value : "compound_interest";
+    csuiteDispatchBtn.disabled = true;
+    csuiteDispatchBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Convening C-Suite…`;
+
+    try {
+      const res = await fetch(`${API}/api/swarm-os/dispatch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_type }),
+      });
+      const data = await res.json();
+      renderCSuiteResult(data);
+      if (window.sound) window.sound.success();
+      showToast("C-Suite Council certified unanimous approval!", "success");
+    } catch (err) {
+      console.error("C-Suite dispatch failed", err);
+      showToast("C-Suite dispatch failed", "error");
+    } finally {
+      csuiteDispatchBtn.disabled = false;
+      csuiteDispatchBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Dispatch C-Suite Council`;
+    }
+  });
+}
+
+function renderCSuiteResult(data) {
+  if (csuiteCertChip) {
+    csuiteCertChip.className = `status-chip ${data.consensus_certified ? "green" : "red"}`;
+    csuiteCertChip.textContent = data.consensus_certified ? "✓ 100% Certified" : "Uncertified";
+  }
+  if (csuiteLatencyBadge) {
+    csuiteLatencyBadge.textContent = `${data.latency_ms}ms Latency`;
+  }
+
+  const roleIcons = {
+    "CEO": "👑",
+    "CTO": "💻",
+    "CFO": "💰",
+    "CISO": "🛡️",
+    "QA": "⚖️",
+  };
+
+  const councilHtml = data.c_suite_council.map((member) => {
+    const roleKey = Object.keys(roleIcons).find(k => member.role.includes(k)) || "👑";
+    const detail = member.directive || member.action || member.audit_check || member.scan_verdict || member.assertion;
+    const badge = member.strategic_kpi || member.tool_registry_status || member.financial_risk_score || member.sandbox_isolation || member.verdict;
+
+    return `
+      <div class="glass-card" style="border-left: 4px solid var(--electric-blue); padding: 14px 18px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-weight:800; font-size:14px; color:var(--text-main);">
+            <span style="margin-right:8px; font-size:16px;">${roleIcons[roleKey]}</span> ${member.role}
+          </div>
+          <span class="status-chip green" style="font-size:10px;">${badge}</span>
+        </div>
+        <div style="margin-top:8px; font-size:13px; color:var(--text-muted); line-height:1.5;">
+          ${detail}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  if (csuiteCouncilContainer) {
+    csuiteCouncilContainer.innerHTML = councilHtml;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// MCTS AlphaGo Tree Search
+// ---------------------------------------------------------------------------
+const mctsSearchBtn = document.getElementById("mctsSearchBtn");
+const mctsTaskSelect = document.getElementById("mctsTaskSelect");
+const mctsSimSlider = document.getElementById("mctsSimSlider");
+const mctsSimVal = document.getElementById("mctsSimVal");
+const mctsConfidenceChip = document.getElementById("mctsConfidenceChip");
+const mctsTreeContainer = document.getElementById("mctsTreeContainer");
+
+if (mctsSimSlider && mctsSimVal) {
+  mctsSimSlider.addEventListener("input", (e) => {
+    mctsSimVal.textContent = e.target.value;
+  });
+}
+
+if (mctsSearchBtn) {
+  mctsSearchBtn.addEventListener("click", async () => {
+    if (window.sound) window.sound.click();
+    const task_type = mctsTaskSelect ? mctsTaskSelect.value : "percentage_discount";
+    const simulations = mctsSimSlider ? parseInt(mctsSimSlider.value, 10) : 50;
+
+    mctsSearchBtn.disabled = true;
+    mctsSearchBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Simulating Rollouts…`;
+
+    try {
+      const res = await fetch(`${API}/api/mcts/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_type, simulations }),
+      });
+      const data = await res.json();
+      renderMCTSResult(data);
+      if (window.sound) window.sound.success();
+      showToast("MCTS AlphaGo policy tree converged!", "success");
+    } catch (err) {
+      console.error("MCTS failed", err);
+      showToast("MCTS search failed", "error");
+    } finally {
+      mctsSearchBtn.disabled = false;
+      mctsSearchBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg> Execute MCTS Search`;
+    }
+  });
+}
+
+function renderMCTSResult(data) {
+  if (mctsConfidenceChip) {
+    mctsConfidenceChip.textContent = `Confidence: ${data.mcts_convergence_confidence}`;
+  }
+
+  const branchesHtml = data.mcts_tree_stats.map((b) => {
+    const isWinner = b.is_optimal_converged;
+    return `
+      <div class="glass-card" style="border: 1px solid ${isWinner ? 'var(--emerald)' : 'var(--border-color)'}; background: ${isWinner ? 'rgba(16, 185, 129, 0.05)' : 'var(--card-bg)'}; padding: 14px 18px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="color:${isWinner ? 'var(--emerald)' : 'var(--text-main)'}; font-size:13px;">
+            ${isWinner ? '🏆 ' : '🌿 '}${b.branch}
+          </strong>
+          <span class="status-chip ${isWinner ? 'green' : ''}" style="font-size:10px;">
+            Visits: ${b.visits} | Q-Val: ${b.q_value} | UCB1: ${b.ucb1_score}
+          </span>
+        </div>
+        <div style="margin-top:6px; font-size:13px; color:var(--text-muted);">
+          Thought: ${b.thought}
+        </div>
+        <div style="margin-top:6px; font-size:12px; font-weight:bold; color:var(--electric-blue);">
+          Proposed Output: ${b.proposed_value}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  if (mctsTreeContainer) {
+    mctsTreeContainer.innerHTML = `
+      <div class="trace-summary-card" style="margin-bottom:10px;">
+        <div class="trace-prompt"><strong>MCTS Ground Truth:</strong> ${data.ground_truth} | Optimal Solution: <strong>${data.optimal_solution}</strong> (${data.simulations_executed} rollouts in ${data.search_latency_ms}ms)</div>
+      </div>
+      ${branchesHtml}
+    `;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cryptographic Merkle Audit Vault
+// ---------------------------------------------------------------------------
+const vaultVerifyBtn = document.getElementById("vaultVerifyBtn");
+const vaultMerkleRoot = document.getElementById("vaultMerkleRoot");
+const vaultBlockCount = document.getElementById("vaultBlockCount");
+const vaultIntegrityBadge = document.getElementById("vaultIntegrityBadge");
+const vaultTrailContainer = document.getElementById("vaultTrailContainer");
+
+async function loadMerkleVault() {
+  try {
+    const [chainRes, verifyRes] = await Promise.all([
+      fetch(`${API}/api/vault/audit-chain`),
+      fetch(`${API}/api/vault/verify`),
+    ]);
+    const chain = await chainRes.json();
+    const verify = await verifyRes.json();
+
+    if (vaultMerkleRoot) vaultMerkleRoot.textContent = verify.merkle_root_hash || "GENESIS";
+    if (vaultBlockCount) vaultBlockCount.textContent = `${verify.total_blocks_verified} Blocks`;
+    if (vaultIntegrityBadge) {
+      vaultIntegrityBadge.className = `status-chip ${verify.valid ? 'green' : 'red'}`;
+      vaultIntegrityBadge.textContent = verify.valid ? "100% PRISTINE" : "TAMPERED";
+    }
+
+    if (vaultTrailContainer) {
+      vaultTrailContainer.innerHTML = chain.map(b => `
+        <div class="step-card" style="margin-bottom:8px;">
+          <div class="step-header" style="display:flex; justify-content:space-between;">
+            <span>Block #${b.index} [${b.event_type}]</span>
+            <code style="font-size:11px; color:var(--electric-blue);">${b.block_hash}</code>
+          </div>
+          <div class="step-body" style="font-size:12px; color:var(--text-muted);">
+            <div>Prev Hash: <code>${b.prev_hash}</code></div>
+            <div>Timestamp: ${new Date(b.timestamp * 1000).toLocaleTimeString()}</div>
+          </div>
+        </div>
+      `).join("");
+    }
+  } catch (err) {
+    console.error("Failed to load Merkle Vault", err);
+  }
+}
+
+if (vaultVerifyBtn) {
+  vaultVerifyBtn.addEventListener("click", async () => {
+    if (window.sound) window.sound.click();
+    await loadMerkleVault();
+    if (window.sound) window.sound.success();
+    showToast("Cryptographic Merkle audit chain verified tamper-proof!", "success");
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Provider Switcher in Settings Tab
+// ---------------------------------------------------------------------------
+const settingProviderSelect = document.getElementById("settingProviderSelect");
+const settingApiKeyInput = document.getElementById("settingApiKeyInput");
+const settingSaveProviderBtn = document.getElementById("settingSaveProviderBtn");
+const settingsMerkleCount = document.getElementById("settingsMerkleCount");
+
+if (settingSaveProviderBtn && settingProviderSelect) {
+  settingSaveProviderBtn.addEventListener("click", async () => {
+    if (window.sound) window.sound.click();
+    const provider = settingProviderSelect.value;
+    const api_key = settingApiKeyInput ? settingApiKeyInput.value.trim() : "";
+
+    settingSaveProviderBtn.disabled = true;
+    settingSaveProviderBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Testing & Activating…`;
+
+    try {
+      const res = await fetch(`${API}/api/settings/provider`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, api_key }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (elements.settingsProvider) elements.settingsProvider.textContent = data.active_provider;
+        if (elements.statProviderVal) elements.statProviderVal.textContent = data.active_provider;
+        if (window.sound) window.sound.success();
+        showToast(data.message, "success");
+      } else {
+        showToast(data.detail || "Failed to switch provider", "error");
+      }
+    } catch (err) {
+      console.error("Provider switch failed", err);
+      showToast("Connection to provider failed", "error");
+    } finally {
+      settingSaveProviderBtn.disabled = false;
+      settingSaveProviderBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Test & Activate Provider`;
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------

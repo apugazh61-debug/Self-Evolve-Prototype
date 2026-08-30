@@ -155,3 +155,11 @@ def test_api_webhook_dispatch_pr():
     })
     assert res.status_code == 200
     assert res.json()["dispatched"] is True
+
+
+def test_api_settings_provider():
+    client = TestClient(app)
+    res = client.post("/api/settings/provider", json={"provider": "mock"})
+    assert res.status_code == 200
+    assert res.json()["status"] == "success"
+    assert res.json()["active_provider"] == "mock"

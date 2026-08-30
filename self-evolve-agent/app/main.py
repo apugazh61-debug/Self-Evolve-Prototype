@@ -26,6 +26,7 @@ from .schemas import (
     VisionRequest, VisionResponse, PatchBenchmarkRequest,
     SwarmRequest, RouterRequest, ReplayForkRequest,
     CSuiteRequest, MCTSRequest, WebhookPRRequest,
+    ProviderSettingsRequest,
 )
 from . import tasks as task_bank
 from .tot_engine import TreeOfThoughtsEngine
@@ -448,6 +449,47 @@ def semantic_search_endpoint(q: str, top_k: int = 5):
 def prune_lessons(min_uses: int = 5):
     count = memory.prune_ineffective_lessons(min_uses=min_uses)
     return {"status": "pruned", "count": count}
+
+
+# ---------------------------------------------------------------------------
+# Provider Settings & Dynamic Switching
+# ---------------------------------------------------------------------------
+@app.post("/api/settings/provider")
+def update_provider_settings(req: ProviderSettingsRequest):
+    global llm_provider, agent
+    if req.provider == "gemini":
+        if req.api_key:
+            os.environ["GEMINI_API_KEY"] = req.api_key
+        from .llm import GeminiLLM
+        key = req.api_key or os.environ.get("GEMINI_API_KEY", "")
+        llm_provider = GeminiLLM(api_key=key) if key else llm_provider
+    elif req.provider == "openai":
+        if req.api_key:
+            os.environ["OPENAI_API_KEY"] = req.api_key
+        from .llm import OpenAILLM
+        key = req.api_key or os.environ.get("OPENAI_API_KEY", "")
+        llm_provider = OpenAILLM(api_key=key) if key else llm_provider
+    elif req.provider == "anthropic":
+        if req.api_key:
+            os.environ["ANTHROPIC_API_KEY"] = req.api_key
+        from .llm import AnthropicLLM
+        key = req.api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        llm_provider = AnthropicLLM(api_key=key) if key else llm_provider
+    elif req.provider == "ollama":
+        url = req.ollama_url or "http://localhost:11434"
+        os.environ["OLLAMA_BASE_URL"] = url
+        from .llm import OllamaLLM
+        llm_provider = OllamaLLM(base_url=url)
+    else:
+        from .llm import MockLLM
+        llm_provider = MockLLM()
+
+    agent.llm = llm_provider
+    return {
+        "status": "success",
+        "active_provider": llm_provider.name,
+        "message": f"Successfully activated '{llm_provider.name}' provider.",
+    }
 
 
 # ---------------------------------------------------------------------------

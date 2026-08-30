@@ -302,6 +302,12 @@ class WebhookPRRequest(BaseModel):
     task_type: str = "percentage_discount"
 
 
+class ProviderSettingsRequest(BaseModel):
+    provider: str = "mock"
+    api_key: Optional[str] = None
+    ollama_url: Optional[str] = None
+
+
 class ExportData(BaseModel):
     version: str = "1.0"
     lessons: List[LessonOut]
