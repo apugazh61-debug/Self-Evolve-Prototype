@@ -710,15 +710,24 @@ elements.runBtn.addEventListener("click", async () => {
 // Reset Memory Action
 async function handleReset() {
   if (!confirm("Are you sure you want to reset all stored lessons and attempts?")) return;
-  await fetch(`${API}/api/memory/reset`, { method: "POST" });
-  elements.traceContainer.innerHTML = `<p class="empty-state">Memory wiped. Run the agent to start fresh!</p>`;
-  resetPipelineNodes();
-  showToast("Memory wiped cleanly", "info");
-  await refreshAll();
+  try {
+    const res = await fetch(`${API}/api/memory/reset`, { method: "POST" });
+    if (res.ok) {
+      elements.traceContainer.innerHTML = `<p class="empty-state">Memory wiped. Run the agent to start fresh!</p>`;
+      resetPipelineNodes();
+      showToast("Memory wiped cleanly", "info");
+      await refreshAll();
+    } else {
+      showToast("Failed to reset memory", "error");
+    }
+  } catch (err) {
+    console.error("Reset error", err);
+    showToast("Error resetting memory", "error");
+  }
 }
 
-elements.resetBtn.addEventListener("click", handleReset);
-elements.settingsResetBtn.addEventListener("click", handleReset);
+if (elements.resetBtn) elements.resetBtn.addEventListener("click", handleReset);
+if (elements.settingsResetBtn) elements.settingsResetBtn.addEventListener("click", handleReset);
 elements.refreshBtn.addEventListener("click", refreshAll);
 elements.metaRefreshBtn.addEventListener("click", loadMeta);
 

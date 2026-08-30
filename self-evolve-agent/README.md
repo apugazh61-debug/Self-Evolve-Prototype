@@ -1,6 +1,6 @@
 # Self-Evolve — Self-Improving Agentic AI System
 
-**Team Red-Ant** (Pugazhenthi S, Alfiya A) — DeepSprint Hackathon
+**Team Red-Ant** (Pugazhenthi S, Alfiya A)
 
 A working prototype of a **Reflexion-style self-improving AI agent**: it
 attempts a task, critiques its own answer, reflects on *why* it was wrong,
