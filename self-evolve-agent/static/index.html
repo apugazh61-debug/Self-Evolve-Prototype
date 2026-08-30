@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Self-Evolve — Autonomous Agentic AI Platform</title>
-  <meta name="description" content="An autonomous self-improving Agentic AI system with Tree of Thoughts, Adversarial Debate Arena, Self-Play Autopilot, and Tool Forge." />
+  <meta name="description" content="An autonomous self-improving Agentic AI system with 3D Knowledge Galaxy, Vision Solver, Multi-Agent Debate Arena, Self-Play Autopilot, and Tool Forge." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -45,6 +45,10 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Debate Arena
     </button>
+    <button class="nav-item" data-tab="vision" id="nav-vision">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg>
+      Vision Agent
+    </button>
     <button class="nav-item" data-tab="tools" id="nav-tools">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
       Tool Forge
@@ -53,8 +57,16 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
       Self-Play Autopilot
     </button>
+    <button class="nav-item" data-tab="galaxy" id="nav-galaxy">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+      3D Galaxy
+    </button>
+    <button class="nav-item" data-tab="patcher" id="nav-patcher">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Self-Patcher
+    </button>
 
-    <span class="nav-label" style="margin-top: 10px;">Memory & Insights</span>
+    <span class="nav-label" style="margin-top: 10px;">Memory & Reports</span>
     <button class="nav-item" data-tab="memory" id="nav-memory">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
       Memory Lab
@@ -62,6 +74,10 @@
     <button class="nav-item" data-tab="analytics" id="nav-analytics">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Analytics
+    </button>
+    <button class="nav-item" data-tab="report" id="nav-report">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Audit Report
     </button>
     <button class="nav-item" data-tab="settings" id="nav-settings">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 5 17.07M4.93 19.07A10 10 0 0 0 19 6.93"/></svg>
@@ -87,10 +103,16 @@
       <h2 class="page-title" id="pageTitle">Dashboard</h2>
     </div>
     <div class="topbar-right">
+      <!-- Voice TTS Audio Speaker Toggle -->
+      <button class="voice-btn" id="ttsToggleBtn" title="Toggle Audio Voice Response">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <span id="ttsToggleLabel">Voice: ON</span>
+      </button>
+
       <!-- Voice Command Mic Button -->
       <button class="voice-btn" id="voiceBtn" title="Speak a voice command">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-        <span id="voiceLabel">Voice Command</span>
+        <span id="voiceLabel">Voice Mic</span>
       </button>
 
       <div class="provider-badge" id="providerBadge">
@@ -201,11 +223,6 @@
             Reset Memory
           </button>
         </div>
-
-        <div class="hint-box">
-          Run the same task type twice: iteration 1 will fail (no lesson yet), iteration 2 will succeed
-          after storing a lesson — then on the next run, iteration 1 passes immediately.
-        </div>
       </div>
 
       <!-- Multi-agent pipeline visualizer -->
@@ -313,6 +330,40 @@
     </div>
   </div>
 
+  <!-- ─────────────────────────── TAB: VISION AGENT ─────────────────── -->
+  <div class="tab-content" id="tab-vision">
+    <div class="run-layout">
+      <div class="glass-card controls-card">
+        <div class="card-header">
+          <span class="card-title">Multi-Modal Vision & Diagram Reasoning Agent</span>
+        </div>
+        <p class="settings-note">
+          Input geometric diagrams, handwritten problem statements, or visual financial specs. The Vision agent extracts constraints, grounds spatial entities, and executes verified solvers.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Visual Diagram / Problem Description</label>
+          <input type="text" id="visionHintInput" class="form-select" placeholder="e.g. Rectangle 15m x 8m attached to semicircle diameter 8m" value="Rectangle (15m x 8m) with attached semicircle of diameter 8m. What is the total area?" />
+        </div>
+        <div class="run-actions">
+          <button class="btn-primary" id="visionSolveBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg>
+            Analyze Diagram & Solve
+          </button>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title">Multi-Modal Grounding & Solution</span>
+          <span class="status-chip" id="visionStatus"></span>
+        </div>
+        <div id="visionResultContainer" class="trace-container">
+          <p class="empty-state">Enter a diagram prompt and click 'Analyze Diagram & Solve'.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ─────────────────────────── TAB: TOOL FORGE ───────────────────── -->
   <div class="tab-content" id="tab-tools">
     <div class="run-layout">
@@ -380,6 +431,60 @@
         </div>
         <div id="selfPlayHistoryContainer" class="trace-container">
           <p class="empty-state">No autonomous sessions recorded yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── TAB: 3D GALAXY ────────────────────── -->
+  <div class="tab-content" id="tab-galaxy">
+    <div class="run-layout">
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title">3D Holographic Knowledge Galaxy</span>
+          <span class="live-badge"><span class="pulse-dot"></span>ROTATING</span>
+        </div>
+        <p class="settings-note">
+          Interactive 3D Constellation of retained lessons (Amber), active task nodes (Cyan), and custom tools (Emerald). Drag to rotate!
+        </p>
+        <div id="galaxyCanvasContainer" style="width:100%; height:420px; margin-top:14px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── TAB: SELF-PATCHER ─────────────────── -->
+  <div class="tab-content" id="tab-patcher">
+    <div class="run-layout">
+      <div class="glass-card controls-card">
+        <div class="card-header">
+          <span class="card-title">Autonomous Code Patcher & Benchmarker</span>
+        </div>
+        <p class="settings-note">
+          Analyzes historical failure patterns, generates self-modifying code patches to optimize solver algorithms, and validates changes through automated benchmarks before deployment.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Target Architecture Component</label>
+          <select id="patcherTarget" class="form-select">
+            <option value="percentage_discount">Percentage Discount (Algebraic Normalizer)</option>
+            <option value="compound_interest">Compound Interest (Power Exponentiation)</option>
+            <option value="general_reflexion">Root LLM Solver (Context Similarity Injector)</option>
+          </select>
+        </div>
+        <div class="run-actions">
+          <button class="btn-primary" id="runPatcherBenchmarkBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Synthesize & Benchmark Patch
+          </button>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title">Benchmark & Diff Inspection</span>
+          <span class="status-chip" id="patcherStatus"></span>
+        </div>
+        <div id="patcherResultContainer" class="trace-container">
+          <p class="empty-state">Select a component and click 'Synthesize & Benchmark Patch'.</p>
         </div>
       </div>
     </div>
@@ -457,6 +562,26 @@
     </div>
   </div>
 
+  <!-- ─────────────────────────── TAB: REPORT ────────────────────────── -->
+  <div class="tab-content" id="tab-report">
+    <div class="run-layout">
+      <div class="glass-card controls-card">
+        <div class="card-header">
+          <span class="card-title">Executive Intelligence & Audit Report</span>
+        </div>
+        <p class="settings-note">
+          Generates a standalone, presentation-ready briefing document containing execution telemetry, accuracy rates, memory catalogs, and synthesized tools.
+        </p>
+        <div class="run-actions">
+          <a href="/api/report/export" target="_blank" class="btn-primary" style="text-decoration:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Open Printable Executive Dossier
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ─────────────────────────── TAB: SETTINGS ─────────────────────── -->
   <div class="tab-content" id="tab-settings">
     <div class="settings-grid">
@@ -506,10 +631,10 @@
           <div class="api-item"><span class="method post">POST</span><code>/api/run</code></div>
           <div class="api-item"><span class="method post">POST</span><code>/api/tot/run</code></div>
           <div class="api-item"><span class="method post">POST</span><code>/api/debate/run</code></div>
-          <div class="api-item"><span class="method post">POST</span><code>/api/self-play/step</code></div>
+          <div class="api-item"><span class="method post">POST</span><code>/api/vision/solve</code></div>
+          <div class="api-item"><span class="method post">POST</span><code>/api/patcher/benchmark</code></div>
+          <div class="api-item"><span class="method get">GET</span><code>/api/report/export</code></div>
           <div class="api-item"><span class="method get">GET</span><code>/api/tools/custom</code></div>
-          <div class="api-item"><span class="method post">POST</span><code>/api/tools/create</code></div>
-          <div class="api-item"><span class="method get">GET</span><code>/api/memory</code></div>
           <div class="api-item"><span class="method ws">WS</span><code>/ws</code></div>
           <div class="api-item"><span class="method docs">DOCS</span><a href="/docs" target="_blank">/docs</a></div>
         </div>
@@ -523,6 +648,7 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="/static/audio.js"></script>
+<script src="/static/galaxy3d.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

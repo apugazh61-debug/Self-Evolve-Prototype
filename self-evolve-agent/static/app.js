@@ -1,7 +1,7 @@
 /**
  * Self-Evolve v1.0 Dashboard SPA
- * Advanced Agentic AI with Tree of Thoughts, Adversarial Debate,
- * Curiosity Self-Play, Tool Forge, Voice Command, and Web Audio.
+ * Advanced Agentic AI with 3D Galaxy, Multi-Modal Vision, Tree of Thoughts,
+ * Adversarial Debate, Curiosity Self-Play, Tool Forge, and Multi-Character TTS Voice.
  */
 
 const API = "";
@@ -11,6 +11,7 @@ let charts = {};
 let cachedStats = {};
 let cachedLessons = [];
 let autopilotTimer = null;
+let galaxyInstance = null;
 
 // ---------------------------------------------------------------------------
 // DOM Elements
@@ -23,6 +24,8 @@ const elements = {
   refreshBtn: document.getElementById("refreshBtn"),
   
   // Header / Status
+  ttsToggleBtn: document.getElementById("ttsToggleBtn"),
+  ttsToggleLabel: document.getElementById("ttsToggleLabel"),
   voiceBtn: document.getElementById("voiceBtn"),
   voiceLabel: document.getElementById("voiceLabel"),
   providerLabel: document.getElementById("providerLabel"),
@@ -64,6 +67,18 @@ const elements = {
   debateRunBtn: document.getElementById("debateRunBtn"),
   debateStatus: document.getElementById("debateStatus"),
   debateTranscriptContainer: document.getElementById("debateTranscriptContainer"),
+
+  // Vision Agent
+  visionHintInput: document.getElementById("visionHintInput"),
+  visionSolveBtn: document.getElementById("visionSolveBtn"),
+  visionStatus: document.getElementById("visionStatus"),
+  visionResultContainer: document.getElementById("visionResultContainer"),
+
+  // Self Patcher
+  patcherTarget: document.getElementById("patcherTarget"),
+  runPatcherBenchmarkBtn: document.getElementById("runPatcherBenchmarkBtn"),
+  patcherStatus: document.getElementById("patcherStatus"),
+  patcherResultContainer: document.getElementById("patcherResultContainer"),
 
   // Tool Forge
   newToolModalBtn: document.getElementById("newToolModalBtn"),
@@ -121,7 +136,7 @@ function showToast(message, type = "info") {
 }
 
 // ---------------------------------------------------------------------------
-// Voice Recognition Commander
+// Voice Recognition & TTS Engine
 // ---------------------------------------------------------------------------
 let voiceCommander = null;
 if (window.VoiceCommander) {
@@ -137,10 +152,19 @@ if (window.VoiceCommander) {
         elements.voiceLabel.textContent = "Listening…";
       } else {
         elements.voiceBtn.classList.remove("listening");
-        elements.voiceLabel.textContent = "Voice Command";
+        elements.voiceLabel.textContent = "Voice Mic";
       }
     }
   );
+}
+
+if (elements.ttsToggleBtn) {
+  elements.ttsToggleBtn.addEventListener("click", () => {
+    window.sound.click();
+    window.sound.ttsEnabled = !window.sound.ttsEnabled;
+    elements.ttsToggleLabel.textContent = window.sound.ttsEnabled ? "Voice: ON" : "Voice: OFF";
+    showToast(window.sound.ttsEnabled ? "Voice Audio Synthesizer Enabled" : "Voice Audio Muted", "info");
+  });
 }
 
 function handleVoiceCommand(text) {
@@ -154,6 +178,14 @@ function handleVoiceCommand(text) {
   } else if (cmd.includes("debate") || cmd.includes("council")) {
     switchTab("debate");
     elements.debateRunBtn.click();
+  } else if (cmd.includes("vision") || cmd.includes("diagram")) {
+    switchTab("vision");
+    elements.visionSolveBtn.click();
+  } else if (cmd.includes("patch") || cmd.includes("benchmark")) {
+    switchTab("patcher");
+    elements.runPatcherBenchmarkBtn.click();
+  } else if (cmd.includes("galaxy") || cmd.includes("3d")) {
+    switchTab("galaxy");
   } else if (cmd.includes("tool") || cmd.includes("forge")) {
     switchTab("tools");
   } else if (cmd.includes("autopilot") || cmd.includes("self play")) {
@@ -269,33 +301,25 @@ function appendLiveFeed(type, data) {
       item.classList.add("solver");
       content = `<strong>${time}</strong> Started run on <code>${data.task_type}</code> (${data.agent_mode} mode)`;
       break;
-    case "solver_thinking":
-      item.classList.add("solver");
-      content = `<strong>${time}</strong> Solver Agent is computing solution…`;
-      break;
     case "attempt_complete":
       item.classList.add("solver");
-      content = `<strong>${time}</strong> Attempted answer: <code>${data.answer}</code> (confidence: ${(data.confidence * 100).toFixed(0)}%)`;
+      content = `<strong>${time}</strong> Attempted answer: <code>${data.answer}</code>`;
       break;
     case "critique_ready":
       item.classList.add(data.is_correct ? "success" : "fail");
       content = `<strong>${time}</strong> Self-critique: ${data.is_correct ? "✓ Validated correct" : "✗ Incorrect answer"}`;
       break;
-    case "lesson_stored":
-      item.classList.add("memory");
-      content = `<strong>${time}</strong> Memory stored new lesson: "${data.lesson}"`;
-      break;
     case "tot_start":
       item.classList.add("solver");
-      content = `<strong>${time}</strong> Tree of Thoughts: Spawning multi-path search on <code>${data.task_type}</code>`;
+      content = `<strong>${time}</strong> Tree of Thoughts: Parallel exploration on <code>${data.task_type}</code>`;
       break;
     case "debate_start":
       item.classList.add("solver");
       content = `<strong>${time}</strong> Debate Arena: 3-Agent Council convening on <code>${data.task_type}</code>`;
       break;
-    case "self_play_step_complete":
-      item.classList.add(data.solved ? "success" : "solver");
-      content = `<strong>${time}</strong> Self-Play: Teacher evaluated <code>${data.task_type}</code> (${data.difficulty}) — ${data.solved ? "SOLVED" : "LEARNED LESSON"}`;
+    case "vision_analysis_start":
+      item.classList.add("solver");
+      content = `<strong>${time}</strong> Vision Agent: Segmenting geometric & diagram entities…`;
       break;
     case "run_complete":
       item.classList.add(data.success ? "success" : "fail");
@@ -369,6 +393,11 @@ function switchTab(tabId) {
     loadCustomTools();
   } else if (tabId === "selfplay") {
     loadSelfPlayHistory();
+  } else if (tabId === "galaxy") {
+    if (!galaxyInstance && window.Galaxy3D) {
+      galaxyInstance = new Galaxy3D("galaxyCanvasContainer");
+      galaxyInstance.init();
+    }
   }
 
   setTimeout(() => {
@@ -410,144 +439,107 @@ elements.maxIter.addEventListener("input", (e) => {
 });
 
 // ---------------------------------------------------------------------------
-// API Calls & Data Loading
+// Multi-Modal Vision Agent
 // ---------------------------------------------------------------------------
-async function loadHealth() {
-  try {
-    const res = await fetch(`${API}/api/health`);
-    const data = await res.json();
+if (elements.visionSolveBtn) {
+  elements.visionSolveBtn.addEventListener("click", async () => {
+    window.sound.click();
+    elements.visionSolveBtn.disabled = true;
+    elements.visionSolveBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Parsing Diagram…`;
+    elements.visionResultContainer.innerHTML = `<p class="empty-state">Segmenting geometry, mapping parameters & running verifiable solver…</p>`;
 
-    elements.providerLabel.textContent = data.llm_provider;
-    elements.statProviderVal.textContent = data.llm_provider.toUpperCase();
-    elements.settingsProvider.textContent = data.llm_provider;
-    elements.settingsVector.textContent = data.vector_memory ? "Active (ChromaDB)" : "Keyword Fallback";
-    elements.searchMode.textContent = data.vector_memory ? "vector" : "keyword";
-    if (elements.settingsToolsCount) elements.settingsToolsCount.textContent = data.custom_tools_count || "3 Built-in";
-  } catch (err) {
-    elements.providerLabel.textContent = "Offline";
-  }
-}
-
-async function loadTasks() {
-  try {
-    const res = await fetch(`${API}/api/tasks`);
-    const tasks = await res.json();
-    const optionsHtml = tasks.map((t) => `<option value="${t.id}">${t.description}</option>`).join("");
-
-    if (elements.taskType) elements.taskType.innerHTML = optionsHtml;
-    if (elements.totTaskType) elements.totTaskType.innerHTML = optionsHtml;
-    if (elements.debateTaskType) elements.debateTaskType.innerHTML = optionsHtml;
-    elements.settingsTaskCount.textContent = tasks.length;
-  } catch (err) {
-    console.error("Failed to load tasks", err);
-  }
-}
-
-async function loadStats() {
-  try {
-    const res = await fetch(`${API}/api/stats`);
-    const data = await res.json();
-    cachedStats = data.by_task_type || {};
-    const summary = data.summary || {};
-
-    elements.statRunsVal.textContent = summary.total_runs ?? 0;
-    elements.statLessonsVal.textContent = summary.total_lessons ?? 0;
-    const rate = Math.round((summary.first_attempt_success_rate ?? 0) * 100);
-    elements.statSuccessVal.textContent = `${rate}%`;
-
-    renderCharts(cachedStats);
-  } catch (err) {
-    console.error("Failed to load stats", err);
-  }
-}
-
-async function loadMemory(searchQuery = "") {
-  try {
-    let url = `${API}/api/memory`;
-    if (searchQuery.trim()) {
-      url = `${API}/api/memory/semantic-search?q=${encodeURIComponent(searchQuery)}`;
-    }
-
-    const res = await fetch(url);
-    const data = await res.json();
-    const lessons = searchQuery.trim() ? data.results : data;
-    cachedLessons = lessons || [];
-
-    if (!lessons || !lessons.length) {
-      elements.memoryGrid.innerHTML = `<p class="empty-state">No lessons found.</p>`;
-      return;
-    }
-
-    elements.memoryGrid.innerHTML = lessons
-      .map((l) => {
-        const eff = l.effectiveness !== undefined ? Math.round(l.effectiveness * 100) : null;
-        let badgeClass = "mid";
-        if (eff !== null) {
-          if (eff >= 70) badgeClass = "high";
-          else if (eff < 40) badgeClass = "low";
-        }
-
-        const scoreText = l.similarity_score !== undefined
-          ? `Match: ${Math.round(l.similarity_score * 100)}%`
-          : (eff !== null ? `${eff}% Effective (${l.times_used || 0} uses)` : "New");
-
-        return `
-          <div class="memory-card">
-            <div class="memory-card-header">
-              <span class="memory-tag">${l.task_type} · ${l.error_tag}</span>
-              ${l.id ? `<button class="delete-lesson-btn" data-id="${l.id}" title="Delete lesson">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-              </button>` : ""}
-            </div>
-            <div class="memory-text">${l.lesson_text}</div>
-            <div class="memory-footer">
-              <span>${l.created_at ? new Date(l.created_at).toLocaleDateString() : ""}</span>
-              <span class="score-badge ${badgeClass}">${scoreText}</span>
-            </div>
-          </div>
-        `;
-      })
-      .join("");
-
-    document.querySelectorAll(".delete-lesson-btn").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-id");
-        if (confirm("Delete this lesson from memory?")) {
-          await fetch(`${API}/api/lessons/${id}`, { method: "DELETE" });
-          if (window.sound) window.sound.relay();
-          showToast("Lesson deleted", "info");
-          loadMemory(elements.memSearchInput.value);
-        }
+    try {
+      const res = await fetch(`${API}/api/vision/solve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ problem_hint: elements.visionHintInput.value }),
       });
-    });
-
-    renderEffectivenessChart(cachedLessons);
-  } catch (err) {
-    console.error("Failed to load memory", err);
-  }
+      const data = await res.json();
+      renderVisionResult(data);
+      if (data.is_correct) window.sound.success(); else window.sound.error();
+      window.sound.speak(`Vision analysis completed. Final answer is ${data.final_answer}`, "system");
+      showToast(data.is_correct ? "Diagram solved with mathematical verification! 👁️" : "Diagram parsed.", "success");
+    } catch (err) {
+      elements.visionResultContainer.innerHTML = `<p class="empty-state" style="color:var(--rose)">Error: ${err.message}</p>`;
+    } finally {
+      elements.visionSolveBtn.disabled = false;
+      elements.visionSolveBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg> Analyze Diagram & Solve`;
+    }
+  });
 }
 
-async function loadMeta() {
-  try {
-    const res = await fetch(`${API}/api/meta`);
-    const data = await res.json();
+function renderVisionResult(data) {
+  elements.visionStatus.className = `badge ${data.is_correct ? "success" : "fail"}`;
+  elements.visionStatus.textContent = data.is_correct ? "SOLVED" : "INCORRECT";
 
-    const recs = (data.recommendations || [])
-      .map((r) => `<div class="meta-rec-item">💡 ${r}</div>`)
-      .join("");
+  const entitiesHtml = data.detected_visual_elements.map(e => `<span class="score-badge high">${e}</span>`).join(" ");
+  const stepsHtml = data.solution_steps.map(s => `<div style="padding:6px 0; border-bottom:1px solid #e2e8f0;">${s}</div>`).join("");
 
-    elements.metaPanel.innerHTML = `
-      <div class="meta-summary">
-        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
-          Overall Success Rate: <strong style="color:var(--electric-blue);">${Math.round(data.overall_success_rate * 100)}%</strong> 
-          across <strong>${data.total_runs}</strong> runs and <strong>${data.total_lessons}</strong> lessons.
-        </p>
-      </div>
-      <div class="meta-recommendations">${recs || '<p class="empty-state">No recommendations yet.</p>'}</div>
-    `;
-  } catch (err) {
-    console.error("Failed to load meta", err);
-  }
+  elements.visionResultContainer.innerHTML = `
+    <div class="trace-summary-card">
+      <div class="trace-prompt"><strong>Parsed Statement:</strong> ${data.extracted_problem_statement}</div>
+      <div class="badge ${data.is_correct ? 'success' : 'fail'}">Answer: ${data.final_answer} | Confidence: ${Math.round(data.confidence * 100)}%</div>
+    </div>
+    <div class="step-card">
+      <div class="step-header">Visual Entities Grounded</div>
+      <div class="step-body">${entitiesHtml}</div>
+    </div>
+    <div class="step-card">
+      <div class="step-header">Reasoning & Solution Steps</div>
+      <div class="step-body">${stepsHtml}</div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Self-Modifying Code Patcher & Benchmarking
+// ---------------------------------------------------------------------------
+if (elements.runPatcherBenchmarkBtn) {
+  elements.runPatcherBenchmarkBtn.addEventListener("click", async () => {
+    window.sound.click();
+    elements.runPatcherBenchmarkBtn.disabled = true;
+    elements.runPatcherBenchmarkBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Synthesizing Patch…`;
+
+    try {
+      const res = await fetch(`${API}/api/patcher/benchmark`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_area: elements.patcherTarget.value }),
+      });
+      const data = await res.json();
+      renderPatcherResult(data);
+      window.sound.success();
+      window.sound.speak(`Patch validated. Accuracy improved by ${data.benchmark_results.accuracy_gain}`, "system");
+      showToast(`Patch ${data.patch_id} validated successfully! 🧬`, "success");
+    } catch (err) {
+      elements.patcherResultContainer.innerHTML = `<p class="empty-state" style="color:var(--rose)">Error: ${err.message}</p>`;
+    } finally {
+      elements.runPatcherBenchmarkBtn.disabled = false;
+      elements.runPatcherBenchmarkBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Synthesize & Benchmark Patch`;
+    }
+  });
+}
+
+function renderPatcherResult(data) {
+  elements.patcherStatus.className = "badge success";
+  elements.patcherStatus.textContent = data.benchmark_results.status;
+
+  elements.patcherResultContainer.innerHTML = `
+    <div class="trace-summary-card">
+      <div class="trace-prompt"><strong>${data.title}</strong> — ${data.description}</div>
+      <div class="score-badge high">${data.benchmark_results.accuracy_gain} Gain</div>
+    </div>
+    <div class="stat-grid" style="margin-top:14px;">
+      <div class="stat-card"><div class="stat-body"><div class="stat-value">${data.benchmark_results.accuracy_before}</div><div class="stat-label">Accuracy Before</div></div></div>
+      <div class="stat-card"><div class="stat-body"><div class="stat-value" style="color:var(--emerald);">${data.benchmark_results.accuracy_after}</div><div class="stat-label">Accuracy After</div></div></div>
+      <div class="stat-card"><div class="stat-body"><div class="stat-value" style="color:var(--electric-blue);">${data.benchmark_results.latency_reduction}</div><div class="stat-label">Latency Saved</div></div></div>
+      <div class="stat-card"><div class="stat-body"><div class="stat-value">0 Flags</div><div class="stat-label">AST Security</div></div></div>
+    </div>
+    <div class="step-card">
+      <div class="step-header">Synthesized Diff</div>
+      <pre style="background:#0f172a; color:#38bdf8; padding:14px; border-radius:8px; font-family:var(--font-mono); font-size:11px; overflow-x:auto;">${data.code_diff}</pre>
+    </div>
+  `;
 }
 
 // ---------------------------------------------------------------------------
@@ -569,7 +561,8 @@ if (elements.totRunBtn) {
       const data = await res.json();
       renderToTTree(data);
       if (data.is_correct) window.sound.success(); else window.sound.error();
-      showToast(data.is_correct ? "Optimal path converged! 🎯" : "Branch evaluated with sub-optimal score.", data.is_correct ? "success" : "error");
+      window.sound.speak(`Tree of Thoughts evaluated. Optimal answer is ${data.final_answer}`, "system");
+      showToast(data.is_correct ? "Optimal path converged! 🎯" : "Branch evaluated.", data.is_correct ? "success" : "error");
     } catch (err) {
       elements.totTreeContainer.innerHTML = `<p class="empty-state" style="color:var(--rose)">Error: ${err.message}</p>`;
     } finally {
@@ -621,7 +614,7 @@ function renderToTTree(data) {
 }
 
 // ---------------------------------------------------------------------------
-// Debate Arena
+// Debate Arena with Multi-Character Voice Synthesis
 // ---------------------------------------------------------------------------
 if (elements.debateRunBtn) {
   elements.debateRunBtn.addEventListener("click", async () => {
@@ -639,6 +632,13 @@ if (elements.debateRunBtn) {
       const data = await res.json();
       renderDebateTranscript(data);
       if (data.is_correct) window.sound.success(); else window.sound.error();
+      
+      // Multi-character speech: speak judge's final verdict
+      const judgeMsg = data.transcript.find(m => m.role === "judge");
+      if (judgeMsg) {
+        window.sound.speak(`Supreme Judge verdict: ${judgeMsg.message}`, "judge");
+      }
+
       showToast(data.is_correct ? "Council reached verified consensus! ⚖️" : "Debate completed.", "success");
     } catch (err) {
       elements.debateTranscriptContainer.innerHTML = `<p class="empty-state" style="color:var(--rose)">Error: ${err.message}</p>`;
@@ -658,7 +658,12 @@ function renderDebateTranscript(data) {
       <div class="debate-card ${m.role}">
         <div class="debate-speaker">
           <span>${m.speaker}</span>
-          <span style="font-family:var(--font-mono); font-size:11px; opacity:0.8;">${m.stage} · Confidence ${(m.confidence * 100).toFixed(0)}%</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="icon-btn" style="width:24px; height:24px;" onclick="window.sound.speak('${m.message.replace(/'/g, "\\'")}', '${m.role}')" title="Play Voice">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            </button>
+            <span style="font-family:var(--font-mono); font-size:11px; opacity:0.8;">${m.stage} · ${(m.confidence * 100).toFixed(0)}%</span>
+          </div>
         </div>
         <div class="debate-message">${m.message}</div>
       </div>
@@ -980,7 +985,7 @@ function renderEffectivenessChart(lessons) {
 }
 
 // ---------------------------------------------------------------------------
-// Trace Rendering
+// Trace Rendering & Run Action
 // ---------------------------------------------------------------------------
 function fmtNum(n) {
   const num = Number(n);
@@ -1043,9 +1048,6 @@ function renderTrace(result) {
   elements.traceContainer.innerHTML = summary + steps;
 }
 
-// ---------------------------------------------------------------------------
-// Run Agent Action
-// ---------------------------------------------------------------------------
 elements.runBtn.addEventListener("click", async () => {
   if (window.sound) window.sound.click();
   elements.runBtn.disabled = true;
@@ -1066,7 +1068,12 @@ elements.runBtn.addEventListener("click", async () => {
     if (!res.ok) throw new Error(await res.text());
     const result = await res.json();
     renderTrace(result);
-    if (result.success) window.sound.success(); else window.sound.error();
+    if (result.success) {
+      window.sound.success();
+      window.sound.speak(`Task completed successfully in ${result.iterations_used} iterations.`, "system");
+    } else {
+      window.sound.error();
+    }
     showToast(result.success ? "Task solved successfully! 🚀" : "Task failed after max iterations.", result.success ? "success" : "error");
     await refreshAll();
   } catch (err) {
@@ -1154,6 +1161,144 @@ elements.pruneBtn.addEventListener("click", async () => {
   loadMemory();
   loadMeta();
 });
+
+async function loadHealth() {
+  try {
+    const res = await fetch(`${API}/api/health`);
+    const data = await res.json();
+
+    elements.providerLabel.textContent = data.llm_provider;
+    elements.statProviderVal.textContent = data.llm_provider.toUpperCase();
+    elements.settingsProvider.textContent = data.llm_provider;
+    elements.settingsVector.textContent = data.vector_memory ? "Active (ChromaDB)" : "Keyword Fallback";
+    elements.searchMode.textContent = data.vector_memory ? "vector" : "keyword";
+    if (elements.settingsToolsCount) elements.settingsToolsCount.textContent = `${data.custom_tools_count || 0} Registered`;
+  } catch (err) {
+    elements.providerLabel.textContent = "Offline";
+  }
+}
+
+async function loadTasks() {
+  try {
+    const res = await fetch(`${API}/api/tasks`);
+    const tasks = await res.json();
+    const optionsHtml = tasks.map((t) => `<option value="${t.id}">${t.description}</option>`).join("");
+
+    if (elements.taskType) elements.taskType.innerHTML = optionsHtml;
+    if (elements.totTaskType) elements.totTaskType.innerHTML = optionsHtml;
+    if (elements.debateTaskType) elements.debateTaskType.innerHTML = optionsHtml;
+    elements.settingsTaskCount.textContent = tasks.length;
+  } catch (err) {
+    console.error("Failed to load tasks", err);
+  }
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch(`${API}/api/stats`);
+    const data = await res.json();
+    cachedStats = data.by_task_type || {};
+    const summary = data.summary || {};
+
+    elements.statRunsVal.textContent = summary.total_runs ?? 0;
+    elements.statLessonsVal.textContent = summary.total_lessons ?? 0;
+    const rate = Math.round((summary.first_attempt_success_rate ?? 0) * 100);
+    elements.statSuccessVal.textContent = `${rate}%`;
+
+    renderCharts(cachedStats);
+  } catch (err) {
+    console.error("Failed to load stats", err);
+  }
+}
+
+async function loadMemory(searchQuery = "") {
+  try {
+    let url = `${API}/api/memory`;
+    if (searchQuery.trim()) {
+      url = `${API}/api/memory/semantic-search?q=${encodeURIComponent(searchQuery)}`;
+    }
+
+    const res = await fetch(url);
+    const data = await res.json();
+    const lessons = searchQuery.trim() ? data.results : data;
+    cachedLessons = lessons || [];
+
+    if (!lessons || !lessons.length) {
+      elements.memoryGrid.innerHTML = `<p class="empty-state">No lessons found.</p>`;
+      return;
+    }
+
+    elements.memoryGrid.innerHTML = lessons
+      .map((l) => {
+        const eff = l.effectiveness !== undefined ? Math.round(l.effectiveness * 100) : null;
+        let badgeClass = "mid";
+        if (eff !== null) {
+          if (eff >= 70) badgeClass = "high";
+          else if (eff < 40) badgeClass = "low";
+        }
+
+        const scoreText = l.similarity_score !== undefined
+          ? `Match: ${Math.round(l.similarity_score * 100)}%`
+          : (eff !== null ? `${eff}% Effective (${l.times_used || 0} uses)` : "New");
+
+        return `
+          <div class="memory-card">
+            <div class="memory-card-header">
+              <span class="memory-tag">${l.task_type} · ${l.error_tag}</span>
+              ${l.id ? `<button class="delete-lesson-btn" data-id="${l.id}" title="Delete lesson">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>` : ""}
+            </div>
+            <div class="memory-text">${l.lesson_text}</div>
+            <div class="memory-footer">
+              <span>${l.created_at ? new Date(l.created_at).toLocaleDateString() : ""}</span>
+              <span class="score-badge ${badgeClass}">${scoreText}</span>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    document.querySelectorAll(".delete-lesson-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        if (confirm("Delete this lesson from memory?")) {
+          await fetch(`${API}/api/lessons/${id}`, { method: "DELETE" });
+          if (window.sound) window.sound.relay();
+          showToast("Lesson deleted", "info");
+          loadMemory(elements.memSearchInput.value);
+        }
+      });
+    });
+
+    renderEffectivenessChart(cachedLessons);
+  } catch (err) {
+    console.error("Failed to load memory", err);
+  }
+}
+
+async function loadMeta() {
+  try {
+    const res = await fetch(`${API}/api/meta`);
+    const data = await res.json();
+
+    const recs = (data.recommendations || [])
+      .map((r) => `<div class="meta-rec-item">💡 ${r}</div>`)
+      .join("");
+
+    elements.metaPanel.innerHTML = `
+      <div class="meta-summary">
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+          Overall Success Rate: <strong style="color:var(--electric-blue);">${Math.round(data.overall_success_rate * 100)}%</strong> 
+          across <strong>${data.total_runs}</strong> runs and <strong>${data.total_lessons}</strong> lessons.
+        </p>
+      </div>
+      <div class="meta-recommendations">${recs || '<p class="empty-state">No recommendations yet.</p>'}</div>
+    `;
+  } catch (err) {
+    console.error("Failed to load meta", err);
+  }
+}
 
 async function refreshAll() {
   await Promise.all([loadHealth(), loadStats(), loadMemory(), loadMeta()]);

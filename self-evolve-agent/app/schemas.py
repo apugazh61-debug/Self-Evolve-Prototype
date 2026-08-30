@@ -248,6 +248,28 @@ class MetaAnalysis(BaseModel):
     pruned_lessons: int = 0
 
 
+class VisionRequest(BaseModel):
+    image_data: Optional[str] = None
+    problem_hint: str = ""
+
+
+class VisionResponse(BaseModel):
+    image_parsed: bool
+    inferred_task_type: str
+    detected_visual_elements: List[str]
+    extracted_problem_statement: str
+    parameters: Dict[str, Any]
+    solution_steps: List[str]
+    final_answer: Any
+    correct_answer: Any
+    is_correct: bool
+    confidence: float
+
+
+class PatchBenchmarkRequest(BaseModel):
+    target_area: str = "percentage_discount"
+
+
 class ExportData(BaseModel):
     version: str = "1.0"
     lessons: List[LessonOut]

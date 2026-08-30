@@ -1,12 +1,14 @@
 /**
- * Web Audio API Tactile Sound Synthesizer & Speech Recognition Engine.
- * Generates rich mechanical click & relay audio in real-time with zero external audio assets.
+ * Web Audio API Tactile Sound Synthesizer, Multi-Character Speech Synthesis (TTS),
+ * and Voice Recognition Engine.
  */
 
 class AudioEngine {
   constructor() {
     this.ctx = null;
     this.muted = false;
+    this.ttsEnabled = true;
+    this.synth = window.speechSynthesis || null;
   }
 
   init() {
@@ -25,7 +27,6 @@ class AudioEngine {
     this.init();
     const t = this.ctx.currentTime;
     
-    // High click impulse
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = "triangle";
@@ -103,6 +104,34 @@ class AudioEngine {
     gain.connect(this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.26);
+  }
+
+  // Multi-Character Text-to-Speech (TTS)
+  speak(text, persona = "system") {
+    if (!this.ttsEnabled || !this.synth) return;
+    
+    // Stop prior ongoing utterance
+    this.synth.cancel();
+
+    const cleanText = text.replace(/<[^>]*>?/gm, "").slice(0, 200);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+
+    // Persona-specific vocal profiles
+    if (persona === "proposer") {
+      utterance.pitch = 1.2;
+      utterance.rate = 1.05;
+    } else if (persona === "adversary") {
+      utterance.pitch = 0.75;
+      utterance.rate = 0.95;
+    } else if (persona === "judge") {
+      utterance.pitch = 0.9;
+      utterance.rate = 0.88;
+    } else {
+      utterance.pitch = 1.0;
+      utterance.rate = 1.0;
+    }
+
+    this.synth.speak(utterance);
   }
 }
 

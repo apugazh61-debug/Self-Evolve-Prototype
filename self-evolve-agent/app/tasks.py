@@ -463,13 +463,15 @@ class TaskGeneratorAdapter:
     def generate(self, rng: random.Random | None = None) -> Task:
         return generate_task(self.task_type, rng)
 
-    def solve_flawed(self, task: Task) -> float | int:
+    def solve_flawed(self, task: Task | dict) -> float | int:
         solver = SOLVERS[self.task_type]
-        return solver(task.params, apply_lesson=False)
+        params = task.params if isinstance(task, Task) else task
+        return solver(params, apply_lesson=False)
 
-    def solve_correct(self, task: Task) -> float | int:
+    def solve_correct(self, task: Task | dict) -> float | int:
         solver = SOLVERS[self.task_type]
-        return solver(task.params, apply_lesson=True)
+        params = task.params if isinstance(task, Task) else task
+        return solver(params, apply_lesson=True)
 
     def verify(self, task: Task, answer) -> bool:
         return task.verify(answer)

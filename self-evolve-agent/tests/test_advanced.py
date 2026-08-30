@@ -4,6 +4,9 @@ Comprehensive unit & API tests for Next-Gen Agentic AI modules:
 - Adversarial Debate Arena
 - Curiosity Self-Play Engine
 - Autonomous Tool Forge & Sandboxed Synthesis
+- Multi-Modal Vision & Diagram Reasoning Agent
+- Self-Modifying Code Patcher & Benchmarker
+- Executive Report Generator
 - Next-Gen REST API Endpoints
 """
 
@@ -14,6 +17,9 @@ from app.tot_engine import TreeOfThoughtsEngine
 from app.debate import DebateArena
 from app.self_play import SelfPlayEngine
 from app.tool_maker import synthesize_and_register_tool, validate_tool_code_safety, execute_custom_tool
+from app.vision_agent import VisionDiagramAgent
+from app.code_patcher import SelfCodePatcher
+from app.report_gen import generate_executive_report_html
 from app import memory
 
 
@@ -39,7 +45,6 @@ def test_tot_engine_structure():
 
 
 def test_tot_learning_with_memory():
-    # First, store a lesson
     memory.store_lesson(
         "percentage_discount",
         "percent_as_flat_subtraction",
@@ -78,7 +83,6 @@ def test_self_play_curiosity_cycle():
     assert "prompt" in result
     assert len(result["trace"]) >= 1
 
-    # Check persistence
     history = memory.get_self_play_history()
     assert len(history) >= 1
 
@@ -87,13 +91,11 @@ def test_self_play_curiosity_cycle():
 # Tool Forge & Synthesis Tests
 # ---------------------------------------------------------------------------
 def test_tool_safety_ast_validation():
-    # Dangerous code
     bad_code = "import os\ndef run_tool(): os.system('calc')"
     safe, msg = validate_tool_code_safety(bad_code)
     assert safe is False
     assert "Prohibited module" in msg
 
-    # Safe code
     good_code = "def run_tool(x, y):\n    return x + y\n"
     safe, msg = validate_tool_code_safety(good_code)
     assert safe is True
@@ -114,10 +116,45 @@ def run_tool(a, b):
     assert res["success"] is True
     assert "tool" in res
 
-    # Test execution
     exec_res = execute_custom_tool("custom_multiply_add7", {"a": 5, "b": 10})
     assert exec_res["success"] is True
     assert exec_res["result"] == 57
+
+
+# ---------------------------------------------------------------------------
+# Multi-Modal Vision & Diagram Reasoning Tests
+# ---------------------------------------------------------------------------
+def test_vision_diagram_agent():
+    agent = VisionDiagramAgent()
+    res = agent.analyze_and_solve(problem_hint="Rectangle 15m x 8m with attached semicircle diameter 8m")
+
+    assert res["inferred_task_type"] == "area_composite"
+    assert len(res["detected_visual_elements"]) >= 2
+    assert "solution_steps" in res
+    assert res["is_correct"] is True
+
+
+# ---------------------------------------------------------------------------
+# Self-Modifying Code Patcher Tests
+# ---------------------------------------------------------------------------
+def test_code_patcher_benchmarking():
+    patcher = SelfCodePatcher()
+    res = patcher.analyze_and_benchmark(target_area="percentage_discount")
+
+    assert "patch_id" in res
+    assert "code_diff" in res
+    assert res["benchmark_results"]["accuracy_after"] == "100%"
+    assert "AST safety" in res["benchmark_results"]["ast_safety_check"]
+
+
+# ---------------------------------------------------------------------------
+# Executive Report Generator Tests
+# ---------------------------------------------------------------------------
+def test_executive_report_html():
+    html = generate_executive_report_html()
+    assert "<!DOCTYPE html>" in html
+    assert "Self-Evolve Intelligence Audit" in html
+    assert "Reusable Episodic Memory Catalog" in html
 
 
 # ---------------------------------------------------------------------------
@@ -150,13 +187,37 @@ def test_api_self_play_step():
     assert "difficulty" in data
 
 
+def test_api_vision_solve():
+    client = TestClient(app)
+    res = client.post("/api/vision/solve", json={"problem_hint": "compound interest $5000 8% 4 years"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["inferred_task_type"] == "compound_interest"
+    assert data["is_correct"] is True
+
+
+def test_api_patcher_benchmark():
+    client = TestClient(app)
+    res = client.post("/api/patcher/benchmark", json={"target_area": "compound_interest"})
+    assert res.status_code == 200
+    data = res.json()
+    assert "patch_id" in data
+    assert "code_diff" in data
+
+
+def test_api_report_export():
+    client = TestClient(app)
+    res = client.get("/api/report/export")
+    assert res.status_code == 200
+    assert "text/html" in res.headers["content-type"]
+    assert "Self-Evolve Intelligence Audit" in res.text
+
+
 def test_api_custom_tools_lifecycle():
     client = TestClient(app)
-    # 1. List tools
     res = client.get("/api/tools/custom")
     assert res.status_code == 200
 
-    # 2. Create tool
     create_payload = {
         "name": "api_power_tool",
         "description": "Calculates power",
@@ -167,7 +228,6 @@ def test_api_custom_tools_lifecycle():
     res = client.post("/api/tools/create", json=create_payload)
     assert res.status_code == 200
 
-    # 3. Execute tool
     res = client.post("/api/tools/execute", json={"name": "api_power_tool", "arguments": {"base": 3, "exp": 4}})
     assert res.status_code == 200
     assert res.json()["result"] == 81

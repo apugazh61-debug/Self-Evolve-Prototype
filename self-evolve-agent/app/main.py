@@ -12,7 +12,7 @@ load_dotenv()
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import memory
@@ -23,12 +23,16 @@ from .schemas import (
     ExportData, LessonOut, MetaAnalysis, RunRequest, RunResponse, TaskTypeOut,
     ToTRequest, ToTResponse, DebateRequest, DebateResponse,
     SelfPlayRequest, SelfPlayResponse, CustomToolCreateRequest, CustomToolExecuteRequest, CustomToolOut,
+    VisionRequest, VisionResponse, PatchBenchmarkRequest,
 )
 from . import tasks as task_bank
 from .tot_engine import TreeOfThoughtsEngine
 from .debate import DebateArena
 from .self_play import SelfPlayEngine
 from .tool_maker import synthesize_and_register_tool, execute_custom_tool, seed_default_synthesized_tools
+from .vision_agent import VisionDiagramAgent
+from .code_patcher import SelfCodePatcher
+from .report_gen import generate_executive_report_html
 from .vector_memory import semantic_search, VECTOR_MEMORY_ENABLED
 from .ws_manager import manager as ws_manager
 
@@ -48,7 +52,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Self-Evolve API v1.0",
-    description="Autonomous Agentic AI platform with Tree-of-Thoughts, Multi-Agent Debate Arena, Curiosity Self-Play, and Tool Forge.",
+    description="Autonomous Agentic AI platform with 3D Galaxy, Multi-Modal Vision, Tree-of-Thoughts, Multi-Agent Debate Arena, Curiosity Self-Play, and Tool Forge.",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -65,6 +69,8 @@ agent = ReflexionAgent(llm_provider=llm_provider)
 tot_engine = TreeOfThoughtsEngine()
 debate_arena = DebateArena()
 self_play_engine = SelfPlayEngine()
+vision_agent = VisionDiagramAgent()
+code_patcher = SelfCodePatcher()
 
 
 # ---------------------------------------------------------------------------
@@ -143,6 +149,39 @@ async def run_agent(req: RunRequest):
             raise HTTPException(status_code=500, detail=event["data"])
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Multi-Modal Vision & Diagram Solver
+# ---------------------------------------------------------------------------
+@app.post("/api/vision/solve", response_model=VisionResponse)
+async def solve_vision_diagram(req: VisionRequest):
+    await ws_manager.broadcast("vision_analysis_start", {"hint": req.problem_hint})
+    result = vision_agent.analyze_and_solve(image_data=req.image_data, problem_hint=req.problem_hint)
+    await ws_manager.broadcast("vision_analysis_complete", {"task_type": result["inferred_task_type"], "is_correct": result["is_correct"]})
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Self-Modifying Code Patcher & Benchmarker
+# ---------------------------------------------------------------------------
+@app.post("/api/patcher/benchmark")
+def benchmark_patch(req: PatchBenchmarkRequest):
+    return code_patcher.analyze_and_benchmark(req.target_area)
+
+
+@app.get("/api/patcher/patches")
+def list_patches():
+    return code_patcher.list_available_patches()
+
+
+# ---------------------------------------------------------------------------
+# Executive Report Generator
+# ---------------------------------------------------------------------------
+@app.get("/api/report/export")
+def export_executive_report():
+    html_content = generate_executive_report_html()
+    return HTMLResponse(content=html_content)
 
 
 # ---------------------------------------------------------------------------
