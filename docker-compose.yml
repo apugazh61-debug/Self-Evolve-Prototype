@@ -1,0 +1,14 @@
+services:
+  self-evolve:
+    build:
+      context: ./self-evolve-agent
+      dockerfile: Dockerfile
+    container_name: self-evolve-agentic-ai
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_PROVIDER=mock
+      - PORT=8000
+    volumes:
+      - ./self-evolve-agent/data:/app/data
+    restart: unless-stopped
