@@ -454,3 +454,38 @@ def generate_task(task_type: str, rng: random.Random | None = None) -> Task:
     if task_type not in GENERATORS:
         raise ValueError(f"Unknown task type: {task_type}")
     return GENERATORS[task_type](rng or random.Random())
+
+
+class TaskGeneratorAdapter:
+    def __init__(self, task_type: str):
+        self.task_type = task_type
+
+    def generate(self, rng: random.Random | None = None) -> Task:
+        return generate_task(self.task_type, rng)
+
+    def solve_flawed(self, task: Task) -> float | int:
+        solver = SOLVERS[self.task_type]
+        return solver(task.params, apply_lesson=False)
+
+    def solve_correct(self, task: Task) -> float | int:
+        solver = SOLVERS[self.task_type]
+        return solver(task.params, apply_lesson=True)
+
+    def verify(self, task: Task, answer) -> bool:
+        return task.verify(answer)
+
+    def critique(self, task: Task, answer) -> dict | None:
+        if self.verify(task, answer):
+            return None
+        tag, lesson = LESSONS[self.task_type]
+        critique_text = CRITIQUES[self.task_type]
+        return {"error_tag": tag, "lesson": lesson, "critique": critique_text}
+
+
+def get_task_generator(task_type: str) -> TaskGeneratorAdapter:
+    if task_type not in GENERATORS:
+        raise ValueError(f"Unknown task type: {task_type}")
+    return TaskGeneratorAdapter(task_type)
+
+
+TASK_BANK = TASK_DESCRIPTIONS

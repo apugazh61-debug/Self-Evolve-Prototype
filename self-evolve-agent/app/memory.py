@@ -1,12 +1,12 @@
 """
 Persistent episodic memory for the Self-Evolve agent, backed by SQLite.
 
-Three tables:
-  - lessons:  distilled, reusable "what went wrong / how to fix it" notes,
-              keyed by (task_type, error_tag). Includes scoring fields to
-              track how effective each lesson is in practice.
+Tables:
+  - lessons:  distilled, reusable "what went wrong / how to fix it" notes.
   - attempts: full audit log of every execute/critique step.
   - meta_lessons: higher-order insights about agent failure patterns.
+  - custom_tools: dynamic AI-synthesized tools.
+  - self_play_history: autonomous training runs and curriculum metrics.
 """
 
 from __future__ import annotations
@@ -83,6 +83,29 @@ def init_db() -> None:
                 created_at  TEXT NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS custom_tools (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                name            TEXT NOT NULL UNIQUE,
+                description     TEXT NOT NULL,
+                code            TEXT NOT NULL,
+                parameters      TEXT NOT NULL DEFAULT '{}',
+                times_executed  INTEGER NOT NULL DEFAULT 0,
+                created_at      TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS self_play_history (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_type       TEXT NOT NULL,
+                difficulty      TEXT NOT NULL,
+                prompt          TEXT NOT NULL,
+                solved          INTEGER NOT NULL,
+                iterations      INTEGER NOT NULL,
+                lessons_learned INTEGER NOT NULL DEFAULT 0,
+                created_at      TEXT NOT NULL
+            )
+        """)
 
         # ---- Migrations: add columns if they don't exist yet ----
         _add_column_if_missing(conn, "lessons", "times_used", "INTEGER NOT NULL DEFAULT 0")
@@ -150,7 +173,6 @@ def delete_lesson(lesson_id: int) -> bool:
 
 
 def update_lesson_usage(task_type: str, success: bool) -> None:
-    """Increment times_used and optionally times_helped for all lessons of this task type."""
     with get_conn() as conn:
         if success:
             conn.execute(
@@ -170,7 +192,6 @@ def update_lesson_usage(task_type: str, success: bool) -> None:
 
 
 def prune_ineffective_lessons(min_uses: int = 5, max_effectiveness: float = 0.0) -> int:
-    """Delete lessons that have been used ≥ min_uses times but never helped."""
     with get_conn() as conn:
         cur = conn.execute(
             """
@@ -190,6 +211,77 @@ def _lesson_with_score(lesson: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Custom Tool CRUD (Autonomous Tool Forge)
+# ---------------------------------------------------------------------------
+
+def save_custom_tool(name: str, description: str, code: str, parameters: str = "{}") -> dict:
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO custom_tools (name, description, code, parameters, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(name) DO UPDATE SET
+                description = excluded.description,
+                code = excluded.code,
+                parameters = excluded.parameters
+            """,
+            (name, description, code, parameters, _now()),
+        )
+        row = conn.execute("SELECT * FROM custom_tools WHERE name = ?", (name,)).fetchone()
+        return dict(row) if row else {}
+
+
+def get_custom_tools() -> list[dict]:
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM custom_tools ORDER BY created_at DESC").fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_custom_tool_by_name(name: str) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM custom_tools WHERE name = ?", (name,)).fetchone()
+        return dict(row) if row else None
+
+
+def record_custom_tool_execution(tool_name: str) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE custom_tools SET times_executed = times_executed + 1 WHERE name = ?", (tool_name,))
+
+
+# ---------------------------------------------------------------------------
+# Self-Play History (Autonomous Curiosity Loop)
+# ---------------------------------------------------------------------------
+
+def record_self_play_session(
+    task_type: str,
+    difficulty: str,
+    prompt: str,
+    solved: bool,
+    iterations: int,
+    lessons_learned: int = 0,
+) -> dict:
+    with get_conn() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO self_play_history
+                (task_type, difficulty, prompt, solved, iterations, lessons_learned, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (task_type, difficulty, prompt, 1 if solved else 0, iterations, lessons_learned, _now()),
+        )
+        row = conn.execute("SELECT * FROM self_play_history WHERE id = ?", (cur.lastrowid,)).fetchone()
+        return dict(row) if row else {}
+
+
+def get_self_play_history(limit: int = 20) -> list[dict]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM self_play_history ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
 # Memory export / import
 # ---------------------------------------------------------------------------
 
@@ -198,7 +290,6 @@ def export_lessons() -> list[dict]:
 
 
 def import_lessons(lessons: list[dict]) -> int:
-    """Bulk-import lessons. Skips duplicates. Returns count of imported."""
     count = 0
     for lesson in lessons:
         task_type = lesson.get("task_type", "")
@@ -257,7 +348,6 @@ def store_attempt(
 # ---------------------------------------------------------------------------
 
 def get_stats() -> dict:
-    """First-attempt success rate over successive runs, grouped by task_type."""
     with get_conn() as conn:
         rows = conn.execute(
             """
@@ -305,7 +395,6 @@ def get_summary() -> dict:
 
 
 def get_failure_patterns() -> list[dict]:
-    """Aggregate failure data per task type for meta-analysis."""
     with get_conn() as conn:
         rows = conn.execute(
             """
@@ -334,7 +423,9 @@ def get_failure_patterns() -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def reset_memory() -> None:
+    init_db()
     with get_conn() as conn:
         conn.execute("DELETE FROM lessons")
         conn.execute("DELETE FROM attempts")
         conn.execute("DELETE FROM meta_lessons")
+        conn.execute("DELETE FROM self_play_history")

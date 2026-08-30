@@ -1,6 +1,6 @@
 """Pydantic schemas for the Self-Evolve API."""
 from __future__ import annotations
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 from pydantic import BaseModel, Field
 
 
@@ -14,6 +14,33 @@ class RunRequest(BaseModel):
     agent_mode: str = Field(default="single", pattern="^(single|multi)$")
 
 
+class ToTRequest(BaseModel):
+    task_type: str
+    branching_factor: int = Field(default=3, ge=2, le=5)
+
+
+class DebateRequest(BaseModel):
+    task_type: str
+    rounds: int = Field(default=2, ge=1, le=4)
+
+
+class SelfPlayRequest(BaseModel):
+    task_type: Optional[str] = None
+
+
+class CustomToolCreateRequest(BaseModel):
+    name: str
+    description: str
+    code: str
+    parameters: Optional[Dict[str, Any]] = None
+    test_input: Optional[Dict[str, Any]] = None
+
+
+class CustomToolExecuteRequest(BaseModel):
+    name: str
+    arguments: Dict[str, Any] = {}
+
+
 # ---------------------------------------------------------------------------
 # Tool schemas
 # ---------------------------------------------------------------------------
@@ -23,6 +50,16 @@ class ToolCallOut(BaseModel):
     input: str
     output: Any
     success: bool
+
+
+class CustomToolOut(BaseModel):
+    id: int
+    name: str
+    description: str
+    code: str
+    parameters: str
+    times_executed: int
+    created_at: str
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +98,6 @@ class IterationTrace(BaseModel):
     lesson_stored: Optional[str] = None
     tool_calls: List[ToolCallOut] = []
     agent_mode: str = "single"
-    # Multi-agent specific (populated when agent_mode == "multi")
     solver: Optional[SolverResult] = None
     critic: Optional[CriticResult] = None
     memory_agent: Optional[MemoryAgentResult] = None
@@ -81,6 +117,73 @@ class RunResponse(BaseModel):
     iterations_used: int
     agent_mode: str = "single"
     trace: List[IterationTrace] = []
+
+
+# ---------------------------------------------------------------------------
+# Tree of Thoughts Schemas
+# ---------------------------------------------------------------------------
+
+class ThoughtNodeOut(BaseModel):
+    id: str
+    parent_id: Optional[str] = None
+    thought: str
+    depth: int
+    score: float
+    status: str
+    output_val: Optional[str] = None
+    reasoning_type: str
+
+
+class ToTResponse(BaseModel):
+    task_id: str
+    task_type: str
+    task_prompt: str
+    final_answer: Any
+    correct_answer: Any
+    is_correct: bool
+    winning_node_id: str
+    winning_path: List[str]
+    tree_nodes: List[ThoughtNodeOut]
+    tree_stats: Dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# Debate Schemas
+# ---------------------------------------------------------------------------
+
+class DebateMessageOut(BaseModel):
+    speaker: str
+    role: str
+    message: str
+    confidence: float
+    stage: str
+
+
+class DebateResponse(BaseModel):
+    task_id: str
+    task_type: str
+    task_prompt: str
+    final_answer: Any
+    correct_answer: Any
+    is_correct: bool
+    transcript: List[DebateMessageOut]
+    rounds: int
+    consensus_score: float
+
+
+# ---------------------------------------------------------------------------
+# Self Play Schemas
+# ---------------------------------------------------------------------------
+
+class SelfPlayResponse(BaseModel):
+    session_id: int
+    task_type: str
+    difficulty: str
+    prompt: str
+    solved: bool
+    iterations_used: int
+    lessons_learned: int
+    trace: List[Dict[str, Any]]
 
 
 # ---------------------------------------------------------------------------
@@ -112,18 +215,10 @@ class SemanticSearchResult(BaseModel):
     similarity_score: float
 
 
-# ---------------------------------------------------------------------------
-# Task type schema
-# ---------------------------------------------------------------------------
-
 class TaskTypeOut(BaseModel):
     id: str
     description: str
 
-
-# ---------------------------------------------------------------------------
-# Meta-analysis schemas
-# ---------------------------------------------------------------------------
 
 class FailurePattern(BaseModel):
     task_type: str
@@ -153,11 +248,7 @@ class MetaAnalysis(BaseModel):
     pruned_lessons: int = 0
 
 
-# ---------------------------------------------------------------------------
-# Export / Import schemas
-# ---------------------------------------------------------------------------
-
 class ExportData(BaseModel):
-    version: str = "2.0"
+    version: str = "1.0"
     lessons: List[LessonOut]
     metadata: dict = {}

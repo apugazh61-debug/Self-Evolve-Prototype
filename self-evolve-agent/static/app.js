@@ -1,7 +1,7 @@
 /**
  * Self-Evolve v1.0 Dashboard SPA
- * Tab routing, WebSocket streaming, Chart.js multi-graph analytics,
- * real-time trace visualizer, semantic memory search, and meta-learner.
+ * Advanced Agentic AI with Tree of Thoughts, Adversarial Debate,
+ * Curiosity Self-Play, Tool Forge, Voice Command, and Web Audio.
  */
 
 const API = "";
@@ -10,6 +10,7 @@ let ws = null;
 let charts = {};
 let cachedStats = {};
 let cachedLessons = [];
+let autopilotTimer = null;
 
 // ---------------------------------------------------------------------------
 // DOM Elements
@@ -22,6 +23,8 @@ const elements = {
   refreshBtn: document.getElementById("refreshBtn"),
   
   // Header / Status
+  voiceBtn: document.getElementById("voiceBtn"),
+  voiceLabel: document.getElementById("voiceLabel"),
   providerLabel: document.getElementById("providerLabel"),
   providerBadge: document.getElementById("providerBadge"),
   wsDot: document.getElementById("wsDot"),
@@ -50,6 +53,34 @@ const elements = {
   traceStatus: document.getElementById("traceStatus"),
   traceContainer: document.getElementById("traceContainer"),
 
+  // Tree of Thoughts
+  totTaskType: document.getElementById("totTaskType"),
+  totRunBtn: document.getElementById("totRunBtn"),
+  totStatus: document.getElementById("totStatus"),
+  totTreeContainer: document.getElementById("totTreeContainer"),
+
+  // Debate Arena
+  debateTaskType: document.getElementById("debateTaskType"),
+  debateRunBtn: document.getElementById("debateRunBtn"),
+  debateStatus: document.getElementById("debateStatus"),
+  debateTranscriptContainer: document.getElementById("debateTranscriptContainer"),
+
+  // Tool Forge
+  newToolModalBtn: document.getElementById("newToolModalBtn"),
+  toolFormCard: document.getElementById("toolFormCard"),
+  toolFormCancelBtn: document.getElementById("toolFormCancelBtn"),
+  toolNameInput: document.getElementById("toolNameInput"),
+  toolDescInput: document.getElementById("toolDescInput"),
+  toolCodeInput: document.getElementById("toolCodeInput"),
+  toolSaveBtn: document.getElementById("toolSaveBtn"),
+  toolsGrid: document.getElementById("toolsGrid"),
+
+  // Self Play
+  selfPlayStepBtn: document.getElementById("selfPlayStepBtn"),
+  selfPlayAutoToggleBtn: document.getElementById("selfPlayAutoToggleBtn"),
+  autopilotStatus: document.getElementById("autopilotStatus"),
+  selfPlayHistoryContainer: document.getElementById("selfPlayHistoryContainer"),
+
   // Memory Lab
   memSearchInput: document.getElementById("memSearchInput"),
   searchMode: document.getElementById("searchMode"),
@@ -66,6 +97,7 @@ const elements = {
   settingsProvider: document.getElementById("settingsProvider"),
   settingsVector: document.getElementById("settingsVector"),
   settingsTaskCount: document.getElementById("settingsTaskCount"),
+  settingsToolsCount: document.getElementById("settingsToolsCount"),
   settingsWsCount: document.getElementById("settingsWsCount"),
   settingsResetBtn: document.getElementById("settingsResetBtn"),
 
@@ -86,6 +118,61 @@ function showToast(message, type = "info") {
     toast.style.transform = "translateY(12px)";
     setTimeout(() => toast.remove(), 300);
   }, 3500);
+}
+
+// ---------------------------------------------------------------------------
+// Voice Recognition Commander
+// ---------------------------------------------------------------------------
+let voiceCommander = null;
+if (window.VoiceCommander) {
+  voiceCommander = new VoiceCommander(
+    (spokenText) => {
+      showToast(`Voice Command: "${spokenText}"`, "info");
+      window.sound.relay();
+      handleVoiceCommand(spokenText);
+    },
+    (isListening) => {
+      if (isListening) {
+        elements.voiceBtn.classList.add("listening");
+        elements.voiceLabel.textContent = "Listening…";
+      } else {
+        elements.voiceBtn.classList.remove("listening");
+        elements.voiceLabel.textContent = "Voice Command";
+      }
+    }
+  );
+}
+
+function handleVoiceCommand(text) {
+  const cmd = text.toLowerCase();
+  if (cmd.includes("run") || cmd.includes("start")) {
+    switchTab("run");
+    elements.runBtn.click();
+  } else if (cmd.includes("tree") || cmd.includes("thought")) {
+    switchTab("tot");
+    elements.totRunBtn.click();
+  } else if (cmd.includes("debate") || cmd.includes("council")) {
+    switchTab("debate");
+    elements.debateRunBtn.click();
+  } else if (cmd.includes("tool") || cmd.includes("forge")) {
+    switchTab("tools");
+  } else if (cmd.includes("autopilot") || cmd.includes("self play")) {
+    switchTab("selfplay");
+    elements.selfPlayStepBtn.click();
+  } else if (cmd.includes("memory") || cmd.includes("lesson")) {
+    switchTab("memory");
+  } else if (cmd.includes("dashboard")) {
+    switchTab("dashboard");
+  } else if (cmd.includes("analytics")) {
+    switchTab("analytics");
+  }
+}
+
+if (elements.voiceBtn) {
+  elements.voiceBtn.addEventListener("click", () => {
+    window.sound.click();
+    if (voiceCommander) voiceCommander.toggle();
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +223,6 @@ function handleWsEvent(msg) {
 
   appendLiveFeed(type, data);
 
-  // Update pipeline visualizer nodes
   if (type === "agent_start") {
     resetPipelineNodes();
     setPipelineNodeState("pn-retrieve", "active");
@@ -199,6 +285,18 @@ function appendLiveFeed(type, data) {
       item.classList.add("memory");
       content = `<strong>${time}</strong> Memory stored new lesson: "${data.lesson}"`;
       break;
+    case "tot_start":
+      item.classList.add("solver");
+      content = `<strong>${time}</strong> Tree of Thoughts: Spawning multi-path search on <code>${data.task_type}</code>`;
+      break;
+    case "debate_start":
+      item.classList.add("solver");
+      content = `<strong>${time}</strong> Debate Arena: 3-Agent Council convening on <code>${data.task_type}</code>`;
+      break;
+    case "self_play_step_complete":
+      item.classList.add(data.solved ? "success" : "solver");
+      content = `<strong>${time}</strong> Self-Play: Teacher evaluated <code>${data.task_type}</code> (${data.difficulty}) — ${data.solved ? "SOLVED" : "LEARNED LESSON"}`;
+      break;
     case "run_complete":
       item.classList.add(data.success ? "success" : "fail");
       content = `<strong>${time}</strong> Run finished — ${data.success ? "SOLVED" : "FAILED"} in ${data.iterations} iteration(s)`;
@@ -233,10 +331,11 @@ function setPipelineNodeState(id, state) {
 }
 
 // ---------------------------------------------------------------------------
-// TAB ROUTING & SWITCHING (FIXED & GUARANTEED)
+// TAB ROUTING & SWITCHING
 // ---------------------------------------------------------------------------
 function switchTab(tabId) {
-  // Update sidebar buttons
+  if (window.sound) window.sound.click();
+
   elements.navItems.forEach((btn) => {
     const btnTab = btn.getAttribute("data-tab");
     if (btnTab === tabId) {
@@ -246,7 +345,6 @@ function switchTab(tabId) {
     }
   });
 
-  // Switch visible tab panel
   elements.tabContents.forEach((tab) => {
     if (tab.id === `tab-${tabId}`) {
       tab.classList.add("active");
@@ -255,13 +353,11 @@ function switchTab(tabId) {
     }
   });
 
-  // Update topbar title
   const activeBtn = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
   if (activeBtn) {
     elements.pageTitle.textContent = activeBtn.innerText.trim();
   }
 
-  // Handle specific tab actions & chart resizing
   if (tabId === "analytics") {
     loadStats();
     loadMeta();
@@ -269,14 +365,15 @@ function switchTab(tabId) {
     loadMemory();
   } else if (tabId === "dashboard") {
     loadStats();
+  } else if (tabId === "tools") {
+    loadCustomTools();
+  } else if (tabId === "selfplay") {
+    loadSelfPlayHistory();
   }
 
-  // Force Chart.js to recalculate dimensions
   setTimeout(() => {
     Object.values(charts).forEach((c) => {
-      if (c && typeof c.resize === "function") {
-        c.resize();
-      }
+      if (c && typeof c.resize === "function") c.resize();
     });
   }, 100);
 }
@@ -288,8 +385,8 @@ elements.navItems.forEach((btn) => {
   });
 });
 
-// Mode switch buttons
 elements.modeSingle.addEventListener("click", () => {
+  if (window.sound) window.sound.click();
   currentMode = "single";
   elements.modeSingle.classList.add("active");
   elements.modeMulti.classList.remove("active");
@@ -299,6 +396,7 @@ elements.modeSingle.addEventListener("click", () => {
 });
 
 elements.modeMulti.addEventListener("click", () => {
+  if (window.sound) window.sound.click();
   currentMode = "multi";
   elements.modeMulti.classList.add("active");
   elements.modeSingle.classList.remove("active");
@@ -324,6 +422,7 @@ async function loadHealth() {
     elements.settingsProvider.textContent = data.llm_provider;
     elements.settingsVector.textContent = data.vector_memory ? "Active (ChromaDB)" : "Keyword Fallback";
     elements.searchMode.textContent = data.vector_memory ? "vector" : "keyword";
+    if (elements.settingsToolsCount) elements.settingsToolsCount.textContent = data.custom_tools_count || "3 Built-in";
   } catch (err) {
     elements.providerLabel.textContent = "Offline";
   }
@@ -333,9 +432,11 @@ async function loadTasks() {
   try {
     const res = await fetch(`${API}/api/tasks`);
     const tasks = await res.json();
-    elements.taskType.innerHTML = tasks
-      .map((t) => `<option value="${t.id}">${t.description}</option>`)
-      .join("");
+    const optionsHtml = tasks.map((t) => `<option value="${t.id}">${t.description}</option>`).join("");
+
+    if (elements.taskType) elements.taskType.innerHTML = optionsHtml;
+    if (elements.totTaskType) elements.totTaskType.innerHTML = optionsHtml;
+    if (elements.debateTaskType) elements.debateTaskType.innerHTML = optionsHtml;
     elements.settingsTaskCount.textContent = tasks.length;
   } catch (err) {
     console.error("Failed to load tasks", err);
@@ -408,19 +509,18 @@ async function loadMemory(searchQuery = "") {
       })
       .join("");
 
-    // Attach delete handlers
     document.querySelectorAll(".delete-lesson-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = btn.getAttribute("data-id");
         if (confirm("Delete this lesson from memory?")) {
           await fetch(`${API}/api/lessons/${id}`, { method: "DELETE" });
+          if (window.sound) window.sound.relay();
           showToast("Lesson deleted", "info");
           loadMemory(elements.memSearchInput.value);
         }
       });
     });
 
-    // Re-render effectiveness chart if analytics is active
     renderEffectivenessChart(cachedLessons);
   } catch (err) {
     console.error("Failed to load memory", err);
@@ -450,12 +550,285 @@ async function loadMeta() {
   }
 }
 
-async function refreshAll() {
-  await Promise.all([loadHealth(), loadStats(), loadMemory(), loadMeta()]);
+// ---------------------------------------------------------------------------
+// Tree of Thoughts (ToT)
+// ---------------------------------------------------------------------------
+if (elements.totRunBtn) {
+  elements.totRunBtn.addEventListener("click", async () => {
+    window.sound.click();
+    elements.totRunBtn.disabled = true;
+    elements.totRunBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Exploring Tree…`;
+    elements.totTreeContainer.innerHTML = `<p class="empty-state">Exploring parallel reasoning paths & evaluating state heuristics…</p>`;
+
+    try {
+      const res = await fetch(`${API}/api/tot/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_type: elements.totTaskType.value }),
+      });
+      const data = await res.json();
+      renderToTTree(data);
+      if (data.is_correct) window.sound.success(); else window.sound.error();
+      showToast(data.is_correct ? "Optimal path converged! 🎯" : "Branch evaluated with sub-optimal score.", data.is_correct ? "success" : "error");
+    } catch (err) {
+      elements.totTreeContainer.innerHTML = `<p class="empty-state" style="color:var(--rose)">Error: ${err.message}</p>`;
+    } finally {
+      elements.totRunBtn.disabled = false;
+      elements.totRunBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 8v4M7 17l3-5M17 17l-3-5"/></svg> Explore Thought Tree`;
+    }
+  });
+}
+
+function renderToTTree(data) {
+  elements.totStatus.className = `badge ${data.is_correct ? "success" : "fail"}`;
+  elements.totStatus.textContent = data.is_correct ? "CONVERGED OPTIMAL" : "REASONING FLAW";
+
+  const nodesByDepth = {};
+  data.tree_nodes.forEach(n => {
+    nodesByDepth[n.depth] = nodesByDepth[n.depth] || [];
+    nodesByDepth[n.depth].push(n);
+  });
+
+  const levelsHtml = Object.keys(nodesByDepth).map(depth => {
+    const nodes = nodesByDepth[depth];
+    const nodeCards = nodes.map(n => {
+      const isWinner = data.winning_path.includes(n.id);
+      return `
+        <div class="tot-node ${isWinner ? 'winner' : ''} ${n.status === 'pruned' ? 'pruned' : ''}">
+          <div class="tot-node-header">
+            <span>${n.id} (${n.reasoning_type})</span>
+            <span class="score-badge ${n.score >= 80 ? 'high' : (n.score >= 50 ? 'mid' : 'low')}">Score: ${n.score}</span>
+          </div>
+          <div class="tot-node-thought">${n.thought}</div>
+          ${n.output_val ? `<div style="font-family:var(--font-mono); font-size:11px; color:var(--electric-blue); font-weight:700;">Output: ${n.output_val}</div>` : ''}
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-dim); margin-top:8px;">Depth Level ${depth}</div>
+      <div class="tot-level">${nodeCards}</div>
+    `;
+  }).join("");
+
+  elements.totTreeContainer.innerHTML = `
+    <div class="trace-summary-card">
+      <div class="trace-prompt"><strong>Task:</strong> ${data.task_prompt}</div>
+      <div class="badge ${data.is_correct ? 'success' : 'fail'}">Answer: ${data.final_answer} | Ground Truth: ${data.correct_answer}</div>
+    </div>
+    ${levelsHtml}
+  `;
 }
 
 // ---------------------------------------------------------------------------
-// Chart.js Visualizations (All 4 Charts Configured Properly)
+// Debate Arena
+// ---------------------------------------------------------------------------
+if (elements.debateRunBtn) {
+  elements.debateRunBtn.addEventListener("click", async () => {
+    window.sound.click();
+    elements.debateRunBtn.disabled = true;
+    elements.debateRunBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Convening Council…`;
+    elements.debateTranscriptContainer.innerHTML = `<p class="empty-state">Proposer, Red-Team Adversary, and Supreme Judge are debating…</p>`;
+
+    try {
+      const res = await fetch(`${API}/api/debate/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_type: elements.debateTaskType.value }),
+      });
+      const data = await res.json();
+      renderDebateTranscript(data);
+      if (data.is_correct) window.sound.success(); else window.sound.error();
+      showToast(data.is_correct ? "Council reached verified consensus! ⚖️" : "Debate completed.", "success");
+    } catch (err) {
+      elements.debateTranscriptContainer.innerHTML = `<p class="empty-state" style="color:var(--rose)">Error: ${err.message}</p>`;
+    } finally {
+      elements.debateRunBtn.disabled = false;
+      elements.debateRunBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Start Council Debate`;
+    }
+  });
+}
+
+function renderDebateTranscript(data) {
+  elements.debateStatus.className = `badge ${data.is_correct ? "success" : "fail"}`;
+  elements.debateStatus.textContent = `CONSENSUS: ${Math.round(data.consensus_score * 100)}%`;
+
+  const cards = data.transcript.map(m => {
+    return `
+      <div class="debate-card ${m.role}">
+        <div class="debate-speaker">
+          <span>${m.speaker}</span>
+          <span style="font-family:var(--font-mono); font-size:11px; opacity:0.8;">${m.stage} · Confidence ${(m.confidence * 100).toFixed(0)}%</span>
+        </div>
+        <div class="debate-message">${m.message}</div>
+      </div>
+    `;
+  }).join("");
+
+  elements.debateTranscriptContainer.innerHTML = `
+    <div class="trace-summary-card">
+      <div class="trace-prompt"><strong>Task:</strong> ${data.task_prompt}</div>
+      <div class="badge ${data.is_correct ? 'success' : 'fail'}">Verdict: ${data.final_answer} (Ground Truth: ${data.correct_answer})</div>
+    </div>
+    ${cards}
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Tool Forge
+// ---------------------------------------------------------------------------
+async function loadCustomTools() {
+  try {
+    const res = await fetch(`${API}/api/tools/custom`);
+    const tools = await res.json();
+    if (!tools.length) {
+      elements.toolsGrid.innerHTML = `<p class="empty-state">No custom synthesized tools yet.</p>`;
+      return;
+    }
+    elements.toolsGrid.innerHTML = tools.map(t => `
+      <div class="memory-card">
+        <div class="memory-card-header">
+          <span class="memory-tag" style="color:var(--electric-blue); font-weight:800;">⚙️ ${t.name}</span>
+          <span class="score-badge high">${t.times_executed} runs</span>
+        </div>
+        <div class="memory-text">${t.description}</div>
+        <pre style="background:#f1f5f9; padding:10px; border-radius:8px; font-family:var(--font-mono); font-size:11px; overflow-x:auto; max-height:120px; border:1px solid #cbd5e1;">${t.code}</pre>
+      </div>
+    `).join("");
+  } catch (err) {
+    console.error("Failed to load tools", err);
+  }
+}
+
+if (elements.newToolModalBtn) {
+  elements.newToolModalBtn.addEventListener("click", () => {
+    window.sound.click();
+    elements.toolFormCard.style.display = elements.toolFormCard.style.display === "none" ? "block" : "none";
+  });
+}
+
+if (elements.toolFormCancelBtn) {
+  elements.toolFormCancelBtn.addEventListener("click", () => {
+    window.sound.click();
+    elements.toolFormCard.style.display = "none";
+  });
+}
+
+if (elements.toolSaveBtn) {
+  elements.toolSaveBtn.addEventListener("click", async () => {
+    window.sound.click();
+    const name = elements.toolNameInput.value.trim();
+    const desc = elements.toolDescInput.value.trim();
+    const code = elements.toolCodeInput.value.trim();
+
+    if (!name || !code) {
+      showToast("Tool name and Python code are required", "error");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API}/api/tools/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description: desc || name, code }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Validation failed");
+      window.sound.success();
+      showToast(`Tool '${name}' successfully synthesized!`, "success");
+      elements.toolFormCard.style.display = "none";
+      loadCustomTools();
+    } catch (err) {
+      window.sound.error();
+      showToast(`Error: ${err.message}`, "error");
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Self-Play Autopilot
+// ---------------------------------------------------------------------------
+async function loadSelfPlayHistory() {
+  try {
+    const res = await fetch(`${API}/api/self-play/history`);
+    const history = await res.json();
+    if (!history.length) {
+      elements.selfPlayHistoryContainer.innerHTML = `<p class="empty-state">No autonomous sessions recorded yet.</p>`;
+      return;
+    }
+    elements.selfPlayHistoryContainer.innerHTML = history.map(s => `
+      <div class="trace-summary-card">
+        <div class="trace-prompt">
+          <span style="color:var(--violet); font-weight:800;">[${s.difficulty}]</span> ${s.prompt}
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="score-badge ${s.lessons_learned > 0 ? 'mid' : 'high'}">${s.lessons_learned > 0 ? `+${s.lessons_learned} Lesson Learned` : 'Retained'}</span>
+          <span class="badge ${s.solved ? 'success' : 'fail'}">${s.solved ? 'SOLVED' : 'FAILED'}</span>
+        </div>
+      </div>
+    `).join("");
+  } catch (err) {
+    console.error("Failed to load self-play history", err);
+  }
+}
+
+if (elements.selfPlayStepBtn) {
+  elements.selfPlayStepBtn.addEventListener("click", async () => {
+    window.sound.click();
+    elements.selfPlayStepBtn.disabled = true;
+    try {
+      const res = await fetch(`${API}/api/self-play/step`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.solved) window.sound.success(); else window.sound.relay();
+      showToast(`Autopilot step completed on '${data.task_type}' (${data.difficulty})`, "success");
+      loadSelfPlayHistory();
+      refreshAll();
+    } catch (err) {
+      showToast(`Self-play error: ${err.message}`, "error");
+    } finally {
+      elements.selfPlayStepBtn.disabled = false;
+    }
+  });
+}
+
+if (elements.selfPlayAutoToggleBtn) {
+  elements.selfPlayAutoToggleBtn.addEventListener("click", () => {
+    window.sound.click();
+    if (autopilotTimer) {
+      clearInterval(autopilotTimer);
+      autopilotTimer = null;
+      elements.autopilotStatus.textContent = "IDLE";
+      elements.autopilotStatus.className = "status-chip";
+      elements.selfPlayAutoToggleBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg> Start Continuous Autopilot`;
+      showToast("Autopilot paused", "info");
+    } else {
+      elements.autopilotStatus.textContent = "AUTOPILOT RUNNING";
+      elements.autopilotStatus.className = "status-chip live";
+      elements.selfPlayAutoToggleBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause Continuous Autopilot`;
+      showToast("Continuous Autopilot Activated! 🚀", "success");
+      autopilotTimer = setInterval(async () => {
+        try {
+          await fetch(`${API}/api/self-play/step`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          });
+          loadSelfPlayHistory();
+          refreshAll();
+        } catch (e) {
+          console.warn("Autopilot tick error", e);
+        }
+      }, 5000);
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Chart.js Visualizations
 // ---------------------------------------------------------------------------
 function renderCharts(byType) {
   const ctxSuccess = document.getElementById("successChart");
@@ -464,7 +837,6 @@ function renderCharts(byType) {
 
   const taskKeys = Object.keys(byType);
 
-  // 1. Success Rate Line Chart (Analytics)
   if (ctxSuccess) {
     if (charts.success) charts.success.destroy();
 
@@ -516,7 +888,6 @@ function renderCharts(byType) {
     });
   }
 
-  // 2. Task Distribution Donut (Analytics)
   if (ctxDonut) {
     if (charts.donut) charts.donut.destroy();
     const counts = taskKeys.map((k) => (byType[k] || []).length);
@@ -542,7 +913,6 @@ function renderCharts(byType) {
     });
   }
 
-  // 3. Mini Dashboard Chart
   if (ctxMini) {
     if (charts.mini) charts.mini.destroy();
     const totalRunsPerType = taskKeys.map((k) => (byType[k] || []).length);
@@ -573,7 +943,6 @@ function renderCharts(byType) {
   renderEffectivenessChart(cachedLessons);
 }
 
-// 4. Lesson Effectiveness Bar Chart (Analytics)
 function renderEffectivenessChart(lessons) {
   const ctxEffectiveness = document.getElementById("effectivenessChart");
   if (!ctxEffectiveness) return;
@@ -678,6 +1047,7 @@ function renderTrace(result) {
 // Run Agent Action
 // ---------------------------------------------------------------------------
 elements.runBtn.addEventListener("click", async () => {
+  if (window.sound) window.sound.click();
   elements.runBtn.disabled = true;
   elements.runBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Running…`;
   elements.traceContainer.innerHTML = `<p class="empty-state">Agent executing in ${currentMode} mode…</p>`;
@@ -696,6 +1066,7 @@ elements.runBtn.addEventListener("click", async () => {
     if (!res.ok) throw new Error(await res.text());
     const result = await res.json();
     renderTrace(result);
+    if (result.success) window.sound.success(); else window.sound.error();
     showToast(result.success ? "Task solved successfully! 🚀" : "Task failed after max iterations.", result.success ? "success" : "error");
     await refreshAll();
   } catch (err) {
@@ -713,6 +1084,7 @@ async function handleReset() {
   try {
     const res = await fetch(`${API}/api/memory/reset`, { method: "POST" });
     if (res.ok) {
+      if (window.sound) window.sound.relay();
       elements.traceContainer.innerHTML = `<p class="empty-state">Memory wiped. Run the agent to start fresh!</p>`;
       resetPipelineNodes();
       showToast("Memory wiped cleanly", "info");
@@ -782,6 +1154,10 @@ elements.pruneBtn.addEventListener("click", async () => {
   loadMemory();
   loadMeta();
 });
+
+async function refreshAll() {
+  await Promise.all([loadHealth(), loadStats(), loadMemory(), loadMeta()]);
+}
 
 // ---------------------------------------------------------------------------
 // Init

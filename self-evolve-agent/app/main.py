@@ -21,8 +21,14 @@ from .agent import ReflexionAgent
 from .llm import get_llm_provider
 from .schemas import (
     ExportData, LessonOut, MetaAnalysis, RunRequest, RunResponse, TaskTypeOut,
+    ToTRequest, ToTResponse, DebateRequest, DebateResponse,
+    SelfPlayRequest, SelfPlayResponse, CustomToolCreateRequest, CustomToolExecuteRequest, CustomToolOut,
 )
 from . import tasks as task_bank
+from .tot_engine import TreeOfThoughtsEngine
+from .debate import DebateArena
+from .self_play import SelfPlayEngine
+from .tool_maker import synthesize_and_register_tool, execute_custom_tool, seed_default_synthesized_tools
 from .vector_memory import semantic_search, VECTOR_MEMORY_ENABLED
 from .ws_manager import manager as ws_manager
 
@@ -36,13 +42,14 @@ STATIC_DIR = BASE_DIR / "static"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     memory.init_db()
+    seed_default_synthesized_tools()
     yield
 
 
 app = FastAPI(
-    title="Self-Evolve API v2",
-    description="Self-improving Reflexion agent with multi-agent support, semantic memory, and real-time streaming.",
-    version="2.0.0",
+    title="Self-Evolve API v1.0",
+    description="Autonomous Agentic AI platform with Tree-of-Thoughts, Multi-Agent Debate Arena, Curiosity Self-Play, and Tool Forge.",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
@@ -55,6 +62,9 @@ app.add_middleware(
 
 llm_provider = get_llm_provider()
 agent = ReflexionAgent(llm_provider=llm_provider)
+tot_engine = TreeOfThoughtsEngine()
+debate_arena = DebateArena()
+self_play_engine = SelfPlayEngine()
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +78,7 @@ def root():
     index = STATIC_DIR / "index.html"
     if index.exists():
         return FileResponse(index)
-    return {"message": "Self-Evolve API v2 is running. See /docs for the API."}
+    return {"message": "Self-Evolve API is running. See /docs for the API."}
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +91,7 @@ def health():
         "llm_provider": llm_provider.name,
         "vector_memory": VECTOR_MEMORY_ENABLED,
         "ws_connections": ws_manager.connection_count,
+        "custom_tools_count": len(memory.get_custom_tools()),
     }
 
 
@@ -93,7 +104,7 @@ def list_tasks():
 
 
 # ---------------------------------------------------------------------------
-# Agent run — standard (synchronous, returns full result)
+# Agent run — standard
 # ---------------------------------------------------------------------------
 @app.post("/api/run")
 async def run_agent(req: RunRequest):
@@ -124,7 +135,6 @@ async def run_agent(req: RunRequest):
     result = None
     while True:
         event = await queue.get()
-        # Broadcast every event to WebSocket clients
         asyncio.create_task(ws_manager.broadcast(event["type"], event.get("data", {})))
         if event["type"] == "_result":
             result = event["data"]
@@ -136,54 +146,80 @@ async def run_agent(req: RunRequest):
 
 
 # ---------------------------------------------------------------------------
-# Agent run — SSE streaming (real-time iteration events)
+# Tree-of-Thoughts (ToT)
 # ---------------------------------------------------------------------------
-@app.post("/api/run/stream")
-async def run_agent_stream(req: RunRequest):
+@app.post("/api/tot/run", response_model=ToTResponse)
+async def run_tree_of_thoughts(req: ToTRequest):
     if req.task_type not in task_bank.GENERATORS:
         raise HTTPException(status_code=400, detail=f"Unknown task_type '{req.task_type}'")
+    await ws_manager.broadcast("tot_start", {"task_type": req.task_type})
+    result = tot_engine.solve(req.task_type)
+    await ws_manager.broadcast("tot_complete", {"task_type": req.task_type, "is_correct": result["is_correct"]})
+    return result
 
-    queue: asyncio.Queue = asyncio.Queue()
-    loop = asyncio.get_running_loop()
 
-    def on_event(event: dict):
-        loop.call_soon_threadsafe(queue.put_nowait, event)
+# ---------------------------------------------------------------------------
+# Adversarial Debate Arena
+# ---------------------------------------------------------------------------
+@app.post("/api/debate/run", response_model=DebateResponse)
+async def run_debate_arena(req: DebateRequest):
+    if req.task_type not in task_bank.GENERATORS:
+        raise HTTPException(status_code=400, detail=f"Unknown task_type '{req.task_type}'")
+    await ws_manager.broadcast("debate_start", {"task_type": req.task_type, "rounds": req.rounds})
+    result = debate_arena.conduct_debate(req.task_type)
+    await ws_manager.broadcast("debate_complete", {"task_type": req.task_type, "is_correct": result["is_correct"]})
+    return result
 
-    def run_sync():
-        try:
-            result = agent.run(
-                task_type=req.task_type,
-                max_iterations=req.max_iterations,
-                agent_mode=req.agent_mode,
-                on_event=on_event,
-            )
-            loop.call_soon_threadsafe(
-                queue.put_nowait, {"type": "complete", "data": result}
-            )
-        except Exception as exc:
-            loop.call_soon_threadsafe(
-                queue.put_nowait, {"type": "error", "data": str(exc)}
-            )
-        finally:
-            loop.call_soon_threadsafe(queue.put_nowait, None)
 
-    thread = threading.Thread(target=run_sync, daemon=True)
-    thread.start()
+# ---------------------------------------------------------------------------
+# Curiosity-Driven Self-Play (Autopilot)
+# ---------------------------------------------------------------------------
+@app.post("/api/self-play/step", response_model=SelfPlayResponse)
+async def run_self_play_step(req: SelfPlayRequest):
+    await ws_manager.broadcast("self_play_step_start", {"task_type": req.task_type or "auto"})
+    result = self_play_engine.run_curiosity_cycle(req.task_type)
+    await ws_manager.broadcast("self_play_step_complete", {
+        "task_type": result["task_type"],
+        "solved": result["solved"],
+        "difficulty": result["difficulty"],
+        "lessons_learned": result["lessons_learned"],
+    })
+    return result
 
-    async def generate():
-        while True:
-            event = await queue.get()
-            if event is None:
-                break
-            # Also broadcast to WebSocket clients
-            asyncio.create_task(ws_manager.broadcast(event["type"], event.get("data", {})))
-            yield f"data: {json.dumps(event)}\n\n"
 
-    return StreamingResponse(
-        generate(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+@app.get("/api/self-play/history")
+def get_self_play_history(limit: int = 20):
+    return memory.get_self_play_history(limit=limit)
+
+
+# ---------------------------------------------------------------------------
+# Autonomous Tool Forge
+# ---------------------------------------------------------------------------
+@app.get("/api/tools/custom", response_model=list[CustomToolOut])
+def get_custom_tools():
+    return memory.get_custom_tools()
+
+
+@app.post("/api/tools/create")
+def create_custom_tool(req: CustomToolCreateRequest):
+    res = synthesize_and_register_tool(
+        name=req.name,
+        description=req.description,
+        code=req.code,
+        parameters=req.parameters,
+        test_input=req.test_input,
     )
+    if not res["success"]:
+        raise HTTPException(status_code=400, detail=res["error"])
+    return res
+
+
+@app.post("/api/tools/execute")
+def execute_tool_endpoint(req: CustomToolExecuteRequest):
+    res = execute_custom_tool(name=req.name, kwargs=req.arguments)
+    if not res["success"]:
+        raise HTTPException(status_code=400, detail=res["error"])
+    return res
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +250,7 @@ async def reset_memory():
 @app.get("/api/memory/export")
 def export_memory():
     lessons = memory.export_lessons()
-    return {"version": "2.0", "lessons": lessons, "metadata": {"count": len(lessons)}}
+    return {"version": "1.0", "lessons": lessons, "metadata": {"count": len(lessons)}}
 
 
 @app.post("/api/memory/import")
@@ -269,14 +305,13 @@ def auto_prune(min_uses: int = 5):
 async def websocket_endpoint(websocket: WebSocket):
     await ws_manager.connect(websocket)
     try:
-        # Send initial health state on connect
         await ws_manager.send_personal(websocket, "connected", {
             "llm_provider": llm_provider.name,
             "vector_memory": VECTOR_MEMORY_ENABLED,
             "task_count": len(task_bank.GENERATORS),
+            "custom_tools": len(memory.get_custom_tools()),
         })
         while True:
-            # Keep connection alive; clients may send pings
             data = await websocket.receive_text()
             if data == "ping":
                 await ws_manager.send_personal(websocket, "pong", {})
@@ -284,9 +319,6 @@ async def websocket_endpoint(websocket: WebSocket):
         ws_manager.disconnect(websocket)
 
 
-# ---------------------------------------------------------------------------
-# Direct run
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), reload=True)
