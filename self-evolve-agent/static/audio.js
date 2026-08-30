@@ -1,6 +1,7 @@
 /**
- * Web Audio API Tactile Sound Synthesizer, Multi-Character Speech Synthesis (TTS),
- * and Voice Recognition Engine.
+ * Self-Evolve Real-Time Tactile Sound Synthesizer,
+ * Multi-Character Natural Speech Synthesis (TTS),
+ * and Multi-Lingual/Tanglish Voice Recognition Engine.
  */
 
 class AudioEngine {
@@ -9,15 +10,40 @@ class AudioEngine {
     this.muted = false;
     this.ttsEnabled = true;
     this.synth = window.speechSynthesis || null;
+    this.voices = [];
+    this.selectedVoice = null;
+    this.initVoices();
   }
 
   init() {
-    if (!this.ctx) {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new AudioCtx();
+    try {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === "suspended") {
+        this.ctx.resume();
+      }
+    } catch (e) {
+      console.warn("AudioContext init warning:", e);
     }
-    if (this.ctx.state === "suspended") {
-      this.ctx.resume();
+  }
+
+  initVoices() {
+    if (!this.synth) return;
+    const loadVoices = () => {
+      this.voices = this.synth.getVoices() || [];
+      if (this.voices.length > 0) {
+        // Prefer natural English voices (Google, Microsoft, Apple)
+        this.selectedVoice = this.voices.find(v => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("Neural")))
+          || this.voices.find(v => v.lang.startsWith("en"))
+          || this.voices[0];
+      }
+    };
+
+    loadVoices();
+    if (this.synth.onvoiceschanged !== undefined) {
+      this.synth.onvoiceschanged = loadVoices;
     }
   }
 
@@ -25,6 +51,7 @@ class AudioEngine {
   click() {
     if (this.muted) return;
     this.init();
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
     
     const osc = this.ctx.createOscillator();
@@ -46,6 +73,7 @@ class AudioEngine {
   relay() {
     if (this.muted) return;
     this.init();
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
 
     const osc = this.ctx.createOscillator();
@@ -67,6 +95,7 @@ class AudioEngine {
   success() {
     if (this.muted) return;
     this.init();
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
 
     [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
@@ -89,6 +118,7 @@ class AudioEngine {
   error() {
     if (this.muted) return;
     this.init();
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
 
     const osc = this.ctx.createOscillator();
@@ -106,37 +136,52 @@ class AudioEngine {
     osc.stop(t + 0.26);
   }
 
-  // Multi-Character Text-to-Speech (TTS)
+  // Real-Time Multi-Character Text-to-Speech (TTS)
   speak(text, persona = "system") {
     if (!this.ttsEnabled || !this.synth) return;
     
-    // Stop prior ongoing utterance
-    this.synth.cancel();
+    // Cancel prior speech to prevent backlog queue
+    try {
+      this.synth.cancel();
+    } catch (e) {}
 
-    const cleanText = text.replace(/<[^>]*>?/gm, "").slice(0, 200);
+    const cleanText = text.replace(/<[^>]*>?/gm, "").replace(/[`*#_~]/g, "").slice(0, 300);
+    if (!cleanText.trim()) return;
+
     const utterance = new SpeechSynthesisUtterance(cleanText);
 
-    // Persona-specific vocal profiles
-    if (persona === "proposer") {
+    // Assign character voice & pitch
+    if (persona === "proposer" || persona === "cto") {
       utterance.pitch = 1.2;
       utterance.rate = 1.05;
-    } else if (persona === "adversary") {
+    } else if (persona === "adversary" || persona === "ciso") {
       utterance.pitch = 0.75;
       utterance.rate = 0.95;
-    } else if (persona === "judge") {
+    } else if (persona === "judge" || persona === "ceo") {
       utterance.pitch = 0.9;
-      utterance.rate = 0.88;
+      utterance.rate = 0.9;
+    } else if (persona === "cfo" || persona === "qa") {
+      utterance.pitch = 1.05;
+      utterance.rate = 1.0;
     } else {
       utterance.pitch = 1.0;
       utterance.rate = 1.0;
     }
 
-    this.synth.speak(utterance);
+    if (this.selectedVoice) {
+      utterance.voice = this.selectedVoice;
+    }
+
+    try {
+      this.synth.speak(utterance);
+    } catch (err) {
+      console.warn("TTS Speech error", err);
+    }
   }
 }
 
 // ---------------------------------------------------------------------------
-// Speech Recognition (Voice Commander)
+// Real-Time Speech Recognition (Voice Commander)
 // ---------------------------------------------------------------------------
 class VoiceCommander {
   constructor(onResultCallback, onStatusChangeCallback) {
@@ -144,52 +189,71 @@ class VoiceCommander {
     this.onStatus = onStatusChangeCallback;
     this.recognition = null;
     this.isListening = false;
+    this.supported = false;
     this.init();
   }
 
   init() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      console.warn("Speech recognition not supported in this browser.");
+      console.warn("Speech recognition is not supported in this browser.");
+      this.supported = false;
       return;
     }
 
-    this.recognition = new SpeechRecognition();
-    this.recognition.continuous = false;
-    this.recognition.interimResults = false;
-    this.recognition.lang = "en-US";
+    try {
+      this.recognition = new SpeechRecognition();
+      this.recognition.continuous = false;
+      this.recognition.interimResults = false;
+      this.recognition.lang = "en-US";
+      this.supported = true;
 
-    this.recognition.onstart = () => {
-      this.isListening = true;
-      if (this.onStatus) this.onStatus(true);
-    };
+      this.recognition.onstart = () => {
+        this.isListening = true;
+        if (this.onStatus) this.onStatus(true);
+      };
 
-    this.recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      if (this.onResult) this.onResult(transcript);
-    };
+      this.recognition.onresult = (event) => {
+        if (event.results && event.results[0] && event.results[0][0]) {
+          const transcript = event.results[0][0].transcript;
+          if (this.onResult) this.onResult(transcript);
+        }
+      };
 
-    this.recognition.onerror = (e) => {
-      console.error("Speech error", e);
-      this.isListening = false;
-      if (this.onStatus) this.onStatus(false);
-    };
+      this.recognition.onerror = (e) => {
+        console.warn("Speech recognition notice:", e.error);
+        this.isListening = false;
+        if (this.onStatus) this.onStatus(false);
+      };
 
-    this.recognition.onend = () => {
-      this.isListening = false;
-      if (this.onStatus) this.onStatus(false);
-    };
+      this.recognition.onend = () => {
+        this.isListening = false;
+        if (this.onStatus) this.onStatus(false);
+      };
+    } catch (e) {
+      console.error("Failed to initialize SpeechRecognition", e);
+      this.supported = false;
+    }
   }
 
   toggle() {
-    if (!this.recognition) {
-      alert("Speech recognition is not supported in this browser. Please use Chrome/Edge.");
+    if (!this.supported || !this.recognition) {
+      alert("Microphone voice recognition is supported on Chrome, Edge, and Chromium browsers. Please ensure microphone permission is allowed.");
       return;
     }
+
     if (this.isListening) {
-      this.recognition.stop();
+      try {
+        this.recognition.stop();
+      } catch (e) {}
+      this.isListening = false;
+      if (this.onStatus) this.onStatus(false);
     } else {
-      this.recognition.start();
+      try {
+        this.recognition.start();
+      } catch (e) {
+        console.warn("Speech recognition restart catch:", e);
+      }
     }
   }
 }

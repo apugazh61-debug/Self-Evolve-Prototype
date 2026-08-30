@@ -163,47 +163,87 @@ if (elements.ttsToggleBtn) {
     window.sound.click();
     window.sound.ttsEnabled = !window.sound.ttsEnabled;
     elements.ttsToggleLabel.textContent = window.sound.ttsEnabled ? "Voice: ON" : "Voice: OFF";
-    showToast(window.sound.ttsEnabled ? "Voice Audio Synthesizer Enabled" : "Voice Audio Muted", "info");
+    const msg = window.sound.ttsEnabled ? "Voice audio synthesizer enabled" : "Voice audio muted";
+    showToast(msg, "info");
+    if (window.sound.ttsEnabled) {
+      window.sound.speak("Voice audio synthesizer is now active.", "system");
+    }
   });
 }
 
 function handleVoiceCommand(text) {
-  const cmd = text.toLowerCase();
-  if (cmd.includes("run") || cmd.includes("start")) {
+  const cmd = text.toLowerCase().trim();
+  
+  if (cmd.includes("c suite") || cmd.includes("c-suite") || cmd.includes("executive") || cmd.includes("ceo")) {
+    window.sound.speak("Dispatching executive C-Suite council.", "ceo");
+    switchTab("csuite");
+    if (csuiteDispatchBtn) csuiteDispatchBtn.click();
+  } else if (cmd.includes("mcts") || cmd.includes("alphago") || cmd.includes("monte carlo")) {
+    window.sound.speak("Executing Monte Carlo Tree Search.", "system");
+    switchTab("mcts");
+    if (mctsSearchBtn) mctsSearchBtn.click();
+  } else if (cmd.includes("vault") || cmd.includes("blockchain") || cmd.includes("merkle")) {
+    window.sound.speak("Inspecting cryptographic Merkle audit vault.", "system");
+    switchTab("vault");
+    loadMerkleVault();
+  } else if (cmd.includes("run") || cmd.includes("start") || cmd.includes("solve") || cmd.includes("agent")) {
+    window.sound.speak("Running agent reflexion loop.", "system");
     switchTab("run");
-    elements.runBtn.click();
+    if (elements.runBtn) elements.runBtn.click();
   } else if (cmd.includes("tree") || cmd.includes("thought")) {
+    window.sound.speak("Exploring Tree of Thoughts multi-branch reasoning.", "system");
     switchTab("tot");
-    elements.totRunBtn.click();
-  } else if (cmd.includes("debate") || cmd.includes("council")) {
+    if (elements.totRunBtn) elements.totRunBtn.click();
+  } else if (cmd.includes("debate") || cmd.includes("council") || cmd.includes("arena")) {
+    window.sound.speak("Convening three agent adversarial debate.", "judge");
     switchTab("debate");
-    elements.debateRunBtn.click();
-  } else if (cmd.includes("vision") || cmd.includes("diagram")) {
+    if (elements.debateRunBtn) elements.debateRunBtn.click();
+  } else if (cmd.includes("vision") || cmd.includes("diagram") || cmd.includes("image")) {
+    window.sound.speak("Segmenting vision diagram entities.", "system");
     switchTab("vision");
-    elements.visionSolveBtn.click();
+    if (elements.visionSolveBtn) elements.visionSolveBtn.click();
   } else if (cmd.includes("patch") || cmd.includes("benchmark")) {
+    window.sound.speak("Synthesizing self-modifying code patch.", "cto");
     switchTab("patcher");
-    elements.runPatcherBenchmarkBtn.click();
-  } else if (cmd.includes("galaxy") || cmd.includes("3d")) {
+    if (elements.runPatcherBenchmarkBtn) elements.runPatcherBenchmarkBtn.click();
+  } else if (cmd.includes("galaxy") || cmd.includes("3d") || cmd.includes("star")) {
+    window.sound.speak("Navigating 3D knowledge galaxy.", "system");
     switchTab("galaxy");
   } else if (cmd.includes("tool") || cmd.includes("forge")) {
+    window.sound.speak("Opening autonomous Tool Forge.", "cto");
     switchTab("tools");
   } else if (cmd.includes("autopilot") || cmd.includes("self play")) {
+    window.sound.speak("Advancing curiosity self-play autopilot.", "system");
     switchTab("selfplay");
-    elements.selfPlayStepBtn.click();
+    if (elements.selfPlayStepBtn) elements.selfPlayStepBtn.click();
   } else if (cmd.includes("memory") || cmd.includes("lesson")) {
+    window.sound.speak("Accessing memory laboratory.", "system");
     switchTab("memory");
-  } else if (cmd.includes("dashboard")) {
+  } else if (cmd.includes("dashboard") || cmd.includes("home")) {
+    window.sound.speak("Returning to main dashboard.", "system");
     switchTab("dashboard");
-  } else if (cmd.includes("analytics")) {
+  } else if (cmd.includes("analytics") || cmd.includes("chart")) {
+    window.sound.speak("Opening intelligence analytics.", "system");
     switchTab("analytics");
+  } else if (cmd.includes("report") || cmd.includes("dossier")) {
+    window.sound.speak("Opening executive audit report.", "system");
+    switchTab("report");
+  } else if (cmd.includes("settings") || cmd.includes("config")) {
+    window.sound.speak("Opening provider settings.", "system");
+    switchTab("settings");
+  } else {
+    window.sound.speak(`Heard command: ${text}`, "system");
   }
 }
 
 if (elements.voiceBtn) {
   elements.voiceBtn.addEventListener("click", () => {
     window.sound.click();
-    if (voiceCommander) voiceCommander.toggle();
+    if (voiceCommander) {
+      voiceCommander.toggle();
+    } else {
+      showToast("Voice Commander initializing… Please try again.", "info");
+    }
   });
 }
 
@@ -1399,15 +1439,18 @@ function renderCSuiteResult(data) {
   };
 
   const councilHtml = data.c_suite_council.map((member) => {
-    const roleKey = Object.keys(roleIcons).find(k => member.role.includes(k)) || "👑";
+    const roleKey = Object.keys(roleIcons).find(k => member.role.includes(k)) || "CEO";
     const detail = member.directive || member.action || member.audit_check || member.scan_verdict || member.assertion;
     const badge = member.strategic_kpi || member.tool_registry_status || member.financial_risk_score || member.sandbox_isolation || member.verdict;
 
     return `
       <div class="glass-card" style="border-left: 4px solid var(--electric-blue); padding: 14px 18px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="font-weight:800; font-size:14px; color:var(--text-main);">
-            <span style="margin-right:8px; font-size:16px;">${roleIcons[roleKey]}</span> ${member.role}
+          <div style="font-weight:800; font-size:14px; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">${roleIcons[roleKey]}</span> ${member.role}
+            <button class="icon-btn" style="width:24px; height:24px; margin-left:6px;" onclick="window.sound.speak('${detail.replace(/'/g, "\\'")}', '${roleKey.toLowerCase()}')" title="Play Voice">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            </button>
           </div>
           <span class="status-chip green" style="font-size:10px;">${badge}</span>
         </div>
@@ -1420,6 +1463,11 @@ function renderCSuiteResult(data) {
 
   if (csuiteCouncilContainer) {
     csuiteCouncilContainer.innerHTML = councilHtml;
+  }
+
+  // Voice speech synthesis for CEO
+  if (data.c_suite_council && data.c_suite_council[0]) {
+    window.sound.speak(`CEO Directive: ${data.c_suite_council[0].directive}`, "ceo");
   }
 }
 
