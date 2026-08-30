@@ -1,5 +1,5 @@
 /**
- * Self-Evolve v2.0 Dashboard SPA
+ * Self-Evolve v1.0 Dashboard SPA
  * Tab routing, WebSocket streaming, Chart.js multi-graph analytics,
  * real-time trace visualizer, semantic memory search, and meta-learner.
  */
