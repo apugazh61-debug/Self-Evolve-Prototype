@@ -6,23 +6,23 @@
 
 :root {
   /* Ceramic & Silver Light Palette */
-  --chassis-bg: #e6ebf2;
-  --chassis-metal: linear-gradient(180deg, #f8fafc 0%, #edf2f7 50%, #e2e8f0 100%);
-  --plate-base: #e9eef5;
-  --plate-raised: linear-gradient(145deg, #ffffff, #e0e6ef);
-  --plate-sunken: #dbe2ed;
+  --chassis-bg: #e8edf4;
+  --chassis-metal: linear-gradient(180deg, #ffffff 0%, #edf2f7 50%, #e2e8f0 100%);
+  --plate-base: #eef2f7;
+  --plate-raised: linear-gradient(145deg, #ffffff, #e1e7f0);
+  --plate-sunken: #dce3ee;
   --plate-sunken-deep: #ced7e5;
 
   /* Neumorphic / Skeuomorphic Highlights & Shadows */
   --light-highlight: #ffffff;
   --dark-shadow: #b8c4d6;
-  --dark-shadow-deep: #a0aec0;
+  --dark-shadow-deep: #9faec2;
   
   /* Text & Engravings */
-  --text-main: #1e293b;
-  --text-muted: #64748b;
-  --text-dim: #94a3b8;
-  --text-engraved: #334155;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+  --text-engraved: #1e293b;
 
   /* Vivid Accents & LEDs */
   --electric-blue: #0284c7;
@@ -44,11 +44,11 @@
     3px 3px 6px var(--dark-shadow),
     -3px -3px 6px var(--light-highlight);
   --extrusion-md: 
-    6px 6px 14px var(--dark-shadow),
-    -6px -6px 14px var(--light-highlight);
+    5px 5px 12px var(--dark-shadow),
+    -5px -5px 12px var(--light-highlight);
   --extrusion-lg:
-    10px 10px 22px var(--dark-shadow),
-    -10px -10px 22px var(--light-highlight);
+    8px 8px 20px var(--dark-shadow),
+    -8px -8px 20px var(--light-highlight);
   --extrusion-btn:
     0 1px 0 rgba(255,255,255,0.9) inset,
     3px 4px 8px var(--dark-shadow),
@@ -71,13 +71,34 @@
 body {
   background-color: var(--chassis-bg);
   background-image: 
-    radial-gradient(circle at 10% 20%, rgba(255,255,255,0.8) 0%, transparent 40%),
+    radial-gradient(circle at 10% 20%, rgba(255,255,255,0.9) 0%, transparent 40%),
     radial-gradient(circle at 90% 80%, rgba(184, 196, 214, 0.4) 0%, transparent 40%);
   color: var(--text-main);
   font-family: var(--font-sans);
   min-height: 100vh;
   display: flex;
   overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════ TAB SWITCHING (FIXED) ═══ */
+.tab-content {
+  display: none !important;
+}
+
+.tab-content.active {
+  display: block !important;
+  animation: tabFadeIn 0.22s ease-out;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════ SIDEBAR ═══ */
@@ -133,7 +154,7 @@ body {
 .logo-sub {
   font-size: 11px;
   color: var(--electric-blue);
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -150,7 +171,7 @@ body {
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-dim);
   letter-spacing: 0.1em;
   padding: 0 12px 4px;
 }
@@ -166,7 +187,7 @@ body {
   border: 1px solid rgba(255,255,255,0.8);
   color: var(--text-engraved);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   box-shadow: var(--extrusion-sm);
   transition: all 0.15s ease-out;
@@ -207,7 +228,7 @@ body {
   gap: 10px;
   font-size: 12px;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .ws-dot {
@@ -233,7 +254,7 @@ body {
 .sidebar-team {
   font-size: 11px;
   color: var(--text-dim);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* ═══════════════════════════════════════════════════════ MAIN CONSOLE ═══ */
@@ -283,7 +304,7 @@ body {
   border: 1px solid rgba(255,255,255,0.4);
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--electric-blue);
   box-shadow: var(--inset-socket);
   font-family: var(--font-mono);
@@ -345,22 +366,6 @@ body {
   position: relative;
   overflow: hidden;
 }
-
-/* Corner Chrome Screw Accents */
-.stat-card::before, .stat-card::after,
-.glass-card::before, .glass-card::after {
-  content: "＋";
-  position: absolute;
-  font-size: 10px;
-  color: #94a3b8;
-  text-shadow: 0 1px 1px #fff;
-  pointer-events: none;
-  font-family: var(--font-mono);
-}
-.stat-card::before { top: 6px; left: 8px; }
-.stat-card::after { top: 6px; right: 8px; }
-.glass-card::before { top: 8px; left: 10px; }
-.glass-card::after { top: 8px; right: 10px; }
 
 .stat-icon {
   width: 48px;
@@ -435,11 +440,11 @@ body {
 
 .card-sub {
   font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 600;
+  color: var(--text-dim);
+  font-weight: 700;
 }
 
-/* ═══════════════════════════════════════════════════════ RECESSED LCD DISPLAYS ═══ */
+/* ═══════════════════════════════════════════════════════ DASHBOARD GRID ═══ */
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
@@ -477,7 +482,7 @@ body {
   border-radius: 12px;
   box-shadow: var(--inset-lcd);
   padding: 14px;
-  max-height: 260px;
+  height: 240px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -504,7 +509,7 @@ body {
 .feed-item.success { border-left: 4px solid var(--emerald); background: #f0fdf4; color: #15803d; }
 .feed-item.fail { border-left: 4px solid var(--rose); background: #fff1f2; color: #be123c; }
 
-/* ═══════════════════════════════════════════════════════ PHYSICAL CONTROLS ═══ */
+/* ═══════════════════════════════════════════════════════ RUN LAYOUT ═══ */
 .run-layout {
   display: flex;
   flex-direction: column;
@@ -986,7 +991,6 @@ body {
   position: relative;
 }
 
-/* Gold Pins */
 .memory-card::after {
   content: "";
   position: absolute;
@@ -1053,10 +1057,10 @@ body {
 .score-badge.mid { background: #fef3c7; color: #b45309; }
 .score-badge.low { background: #ffe4e6; color: #be123c; }
 
-/* ═══════════════════════════════════════════════════════ ANALYTICS ═══ */
+/* ═══════════════════════════════════════════════════════ ANALYTICS GRID (ALIGNED) ═══ */
 .analytics-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 22px;
 }
 

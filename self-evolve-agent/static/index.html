@@ -7,7 +7,7 @@
   <meta name="description" content="A self-improving Reflexion AI agent that learns from its own mistakes using persistent memory — no retraining required." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
@@ -128,7 +128,9 @@
         <div class="card-header">
           <span class="card-title">Quick Stats</span>
         </div>
-        <canvas id="miniChart" height="180"></canvas>
+        <div style="position: relative; height: 240px; width: 100%;">
+          <canvas id="miniChart"></canvas>
+        </div>
       </div>
     </div>
   </div>
@@ -264,19 +266,25 @@
           <span class="card-title">First-Attempt Success Rate</span>
           <span class="card-sub">Over successive runs per task type</span>
         </div>
-        <canvas id="successChart" height="220"></canvas>
+        <div style="position: relative; height: 260px; width: 100%;">
+          <canvas id="successChart"></canvas>
+        </div>
       </div>
       <div class="glass-card chart-card half">
         <div class="card-header">
           <span class="card-title">Task Distribution</span>
         </div>
-        <canvas id="donutChart" height="200"></canvas>
+        <div style="position: relative; height: 240px; width: 100%;">
+          <canvas id="donutChart"></canvas>
+        </div>
       </div>
       <div class="glass-card chart-card half">
         <div class="card-header">
           <span class="card-title">Lesson Effectiveness</span>
         </div>
-        <canvas id="effectivenessChart" height="200"></canvas>
+        <div style="position: relative; height: 240px; width: 100%;">
+          <canvas id="effectivenessChart"></canvas>
+        </div>
       </div>
 
       <!-- Meta analysis panel -->
