@@ -1117,6 +1117,101 @@ body {
   color: #1e293b;
 }
 
+/* ═══════════════════════════════════════════════════════ C-SUITE SWARM OS ═══ */
+.csuite-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.csuite-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.csuite-card {
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: var(--extrusion-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--plate-raised);
+  border: 1px solid rgba(255,255,255,0.9);
+  transition: all 0.2s ease;
+}
+
+.csuite-card:hover {
+  box-shadow: var(--extrusion-md);
+  transform: translateY(-2px);
+}
+
+.csuite-card.ceo {
+  border-left: 5px solid #8b5cf6;
+  background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
+}
+
+.csuite-card.cto {
+  border-left: 5px solid var(--electric-blue);
+  background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);
+}
+
+.csuite-card.cfo {
+  border-left: 5px solid var(--emerald);
+  background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
+}
+
+.csuite-card.ciso {
+  border-left: 5px solid var(--rose);
+  background: linear-gradient(180deg, #ffffff 0%, #fff1f2 100%);
+}
+
+.csuite-card.qa {
+  border-left: 5px solid var(--cyan);
+  background: linear-gradient(180deg, #ffffff 0%, #ecfeff 100%);
+}
+
+.csuite-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding-bottom: 8px;
+}
+
+.csuite-role-title {
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.csuite-code-box {
+  background: #0f172a;
+  color: #38bdf8;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow-x: auto;
+  max-height: 140px;
+  border: 1px solid #1e293b;
+  line-height: 1.4;
+}
+
+.csuite-receipt-banner {
+  background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
 /* ═══════════════════════════════════════════════════════ MEMORY CARTRIDGES ═══ */
 .memory-toolbar {
   display: flex;
