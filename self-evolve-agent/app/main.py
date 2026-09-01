@@ -353,7 +353,7 @@ async def run_debate_arena(req: DebateRequest):
     if req.task_type not in task_bank.GENERATORS:
         raise HTTPException(status_code=400, detail=f"Unknown task_type '{req.task_type}'")
     await ws_manager.broadcast("debate_start", {"task_type": req.task_type, "rounds": req.rounds})
-    result = debate_arena.conduct_debate(req.task_type)
+    result = debate_arena.conduct_debate(req.task_type, rounds=req.rounds)
     await ws_manager.broadcast("debate_complete", {"task_type": req.task_type, "is_correct": result["is_correct"]})
     return result
 

@@ -411,26 +411,35 @@
       <div class="glass-card controls-card">
         <div class="card-header">
           <span class="card-title">Adversarial Multi-Agent Debate Arena</span>
+          <span class="live-badge" style="background: rgba(244, 63, 94, 0.15); color: var(--rose);"><span class="pulse-dot"></span>TRI-AGENT COUNCIL</span>
         </div>
         <div class="form-group">
           <label class="form-label">Select Task for Debate Council</label>
           <select id="debateTaskType" class="form-select"></select>
         </div>
+        <div class="form-group">
+          <label class="form-label">Cross-Examination Rounds <span class="form-hint" id="debateRoundsHint">2</span></label>
+          <input type="range" id="debateRounds" class="form-range" min="1" max="4" value="2" />
+        </div>
         <div class="run-actions">
-          <button class="btn-primary" id="debateRunBtn">
+          <button class="btn-primary" id="debateRunBtn" style="background: linear-gradient(180deg, #f43f5e 0%, #e11d48 50%, #be123c 100%);">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             Start Council Debate
+          </button>
+          <button class="btn-ghost" id="debatePlayAudioBtn" style="display:none;" title="Listen to all agents speak with their unique voices">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            Listen Full Debate (TTS Voices)
           </button>
         </div>
       </div>
 
       <div class="glass-card">
         <div class="card-header">
-          <span class="card-title">Debate Transcript</span>
+          <span class="card-title">Debate Courtroom Transcript &amp; Consensus</span>
           <span class="status-chip" id="debateStatus"></span>
         </div>
         <div id="debateTranscriptContainer" class="debate-transcript-container">
-          <p class="empty-state">Start a debate to see Proposer vs Red-Team Adversary vs Supreme Judge interactions.</p>
+          <p class="empty-state">Start a debate to see Proposer (Alpha) vs Red-Team Adversary (Viper) vs Supreme Judge (Justitia) interactions.</p>
         </div>
       </div>
     </div>

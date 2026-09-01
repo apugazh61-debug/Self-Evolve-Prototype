@@ -738,30 +738,78 @@ function renderToTTree(data) {
 // ---------------------------------------------------------------------------
 // Debate Arena with Multi-Character Voice Synthesis
 // ---------------------------------------------------------------------------
+const debateRounds = document.getElementById("debateRounds");
+const debateRoundsHint = document.getElementById("debateRoundsHint");
+const debatePlayAudioBtn = document.getElementById("debatePlayAudioBtn");
+let lastDebateTranscript = [];
+
+if (debateRounds && debateRoundsHint) {
+  debateRounds.addEventListener("input", (e) => {
+    debateRoundsHint.textContent = e.target.value;
+  });
+}
+
+async function playFullDebateAudio(transcript) {
+  if (!window.sound || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  showToast("Playing full courtroom debate voices… 🎙️", "info");
+
+  for (const m of transcript) {
+    await new Promise((resolve) => {
+      const cleanText = m.message.replace(/<[^>]*>?/gm, "").replace(/[`*#_~]/g, "").slice(0, 300);
+      const utt = new SpeechSynthesisUtterance(`${m.speaker}: ${cleanText}`);
+      if (m.role === "proposer") { utt.pitch = 1.2; utt.rate = 1.05; }
+      else if (m.role === "adversary") { utt.pitch = 0.75; utt.rate = 0.95; }
+      else if (m.role === "judge") { utt.pitch = 0.9; utt.rate = 0.9; }
+
+      if (window.sound.selectedVoice) utt.voice = window.sound.selectedVoice;
+      utt.onend = () => setTimeout(resolve, 400);
+      utt.onerror = () => resolve();
+      window.speechSynthesis.speak(utt);
+    });
+  }
+}
+
+if (debatePlayAudioBtn) {
+  debatePlayAudioBtn.addEventListener("click", () => {
+    if (lastDebateTranscript.length) {
+      playFullDebateAudio(lastDebateTranscript);
+    }
+  });
+}
+
 if (elements.debateRunBtn) {
   elements.debateRunBtn.addEventListener("click", async () => {
-    window.sound.click();
+    if (window.sound) window.sound.click();
     elements.debateRunBtn.disabled = true;
     elements.debateRunBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Convening Council…`;
-    elements.debateTranscriptContainer.innerHTML = `<p class="empty-state">Proposer, Red-Team Adversary, and Supreme Judge are debating…</p>`;
+    elements.debateTranscriptContainer.innerHTML = `<p class="empty-state">Proposer (Alpha), Red-Team Adversary (Viper), and Supreme Judge (Justitia) are convening cross-examination…</p>`;
 
     try {
+      const roundsVal = Number(debateRounds?.value) || 2;
       const res = await fetch(`${API}/api/debate/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task_type: elements.debateTaskType.value }),
+        body: JSON.stringify({
+          task_type: elements.debateTaskType.value,
+          rounds: roundsVal,
+        }),
       });
       const data = await res.json();
+      lastDebateTranscript = data.transcript || [];
       renderDebateTranscript(data);
+
+      if (debatePlayAudioBtn) debatePlayAudioBtn.style.display = "inline-flex";
+
       if (data.is_correct) window.sound.success(); else window.sound.error();
-      
-      // Multi-character speech: speak judge's final verdict
+
+      // Speak final judge verdict
       const judgeMsg = data.transcript.find(m => m.role === "judge");
-      if (judgeMsg) {
+      if (judgeMsg && window.sound.ttsEnabled) {
         window.sound.speak(`Supreme Judge verdict: ${judgeMsg.message}`, "judge");
       }
 
-      showToast(data.is_correct ? "Council reached verified consensus! ⚖️" : "Debate completed.", "success");
+      showToast(data.is_correct ? "Council certified mathematically sound consensus! ⚖️" : "Debate concluded.", "success");
     } catch (err) {
       elements.debateTranscriptContainer.innerHTML = `<p class="empty-state" style="color:var(--rose)">Error: ${err.message}</p>`;
     } finally {
@@ -776,15 +824,32 @@ function renderDebateTranscript(data) {
   elements.debateStatus.textContent = `CONSENSUS: ${Math.round(data.consensus_score * 100)}%`;
 
   const cards = data.transcript.map(m => {
+    const roleColors = {
+      proposer: "#0284c7",
+      adversary: "#e11d48",
+      judge: "#d97706",
+    };
+    const roleIcons = {
+      proposer: "🤖",
+      adversary: "⚔️",
+      judge: "⚖️",
+    };
+
+    const confPct = Math.round((m.confidence || 0.5) * 100);
+
     return `
       <div class="debate-card ${m.role}">
         <div class="debate-speaker">
-          <span>${m.speaker}</span>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <button class="icon-btn" style="width:24px; height:24px;" onclick="window.sound.speak('${m.message.replace(/'/g, "\\'")}', '${m.role}')" title="Play Voice">
+          <span style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">${roleIcons[m.role] || "💬"}</span>
+            <strong style="color:${roleColors[m.role] || '#0f172a'};">${m.speaker}</strong>
+            <span class="tot-reasoning-badge" style="background:${m.role === 'proposer' ? '#e0f2fe' : (m.role === 'adversary' ? '#ffe4e6' : '#fef3c7')}; color:${roleColors[m.role]};">${m.role.toUpperCase()}</span>
+          </span>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button class="icon-btn" style="width:26px; height:26px;" onclick="window.sound.speak('${m.message.replace(/'/g, "\\'")}', '${m.role}')" title="Listen to this agent">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
             </button>
-            <span style="font-family:var(--font-mono); font-size:11px; opacity:0.8;">${m.stage} · ${(m.confidence * 100).toFixed(0)}%</span>
+            <span style="font-family:var(--font-mono); font-size:11px; opacity:0.85; font-weight:700;">${m.stage} · ${confPct}%</span>
           </div>
         </div>
         <div class="debate-message">${m.message}</div>
@@ -794,8 +859,15 @@ function renderDebateTranscript(data) {
 
   elements.debateTranscriptContainer.innerHTML = `
     <div class="trace-summary-card">
-      <div class="trace-prompt"><strong>Task:</strong> ${data.task_prompt}</div>
-      <div class="badge ${data.is_correct ? 'success' : 'fail'}">Verdict: ${data.final_answer} (Ground Truth: ${data.correct_answer})</div>
+      <div>
+        <div class="trace-prompt"><strong>Task Under Debate:</strong> ${data.task_prompt}</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px; font-weight:700;">
+          Rounds: ${data.rounds} | Consensus Score: <span style="color:var(--emerald);">${Math.round(data.consensus_score * 100)}% Certified</span>
+        </div>
+      </div>
+      <div class="badge ${data.is_correct ? 'success' : 'fail'}" style="font-size:13px; padding:8px 16px;">
+        Final Verdict: ${data.final_answer} (Ground Truth: ${data.correct_answer})
+      </div>
     </div>
     ${cards}
   `;
