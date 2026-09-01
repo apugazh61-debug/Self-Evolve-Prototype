@@ -340,16 +340,89 @@ SOLVERS = {
 }
 
 TASK_DESCRIPTIONS = {
-    "percentage_discount":    "Percentage discount word problems",
-    "km_to_miles":            "Kilometer-to-mile unit conversion",
-    "last_n_index":           "Off-by-one list indexing puzzles",
-    "compound_interest":      "Compound vs simple interest",
-    "time_speed_distance":    "Time-speed-distance (unit conversion)",
-    "binary_to_decimal":      "Binary-to-decimal conversion",
-    "area_composite":         "Composite shape area (rectangle + semicircle)",
+    "percentage_discount":   "Percentage discount calculation",
+    "km_to_miles":           "Kilometres to miles conversion",
+    "last_n_index":          "Last-N item index in 1-based list",
+    "compound_interest":     "Annual compound interest calculation",
+    "time_speed_distance":   "Distance from speed and time (minutes)",
+    "binary_to_decimal":     "Binary string to decimal integer",
+    "area_composite":        "Rectangle + semicircle composite area",
     "probability_union":      "Probability union P(A∪B)",
     "roman_numeral":          "Roman numeral to decimal",
     "temperature_conversion": "Fahrenheit to Celsius conversion",
+}
+
+TASK_METADATA = {
+    "percentage_discount": {
+        "description": "Percentage discount calculation",
+        "category": "Financial Math",
+        "formula": "Final = Price × (1 − Discount / 100)",
+        "pitfall": "Treating percentage as a flat dollar subtraction (Price − Discount).",
+        "lesson_preview": "Multiply price by (1 − discount/100). Never subtract percentage directly.",
+    },
+    "km_to_miles": {
+        "description": "Kilometres to miles conversion",
+        "category": "Unit Conversion",
+        "formula": "Miles = Kilometers × 0.621371",
+        "pitfall": "Using rounded factor 0.6 instead of high-precision 0.621371.",
+        "lesson_preview": "Always use exact conversion constant 0.621371 to prevent compound drift.",
+    },
+    "last_n_index": {
+        "description": "Last-N item index in 1-based list",
+        "category": "Data Structures",
+        "formula": "Index = N − (offset − 1)",
+        "pitfall": "Off-by-one indexing: subtracting offset directly (N − offset).",
+        "lesson_preview": "The k-th item from end of 1-based list of size N is at index N − (k − 1).",
+    },
+    "compound_interest": {
+        "description": "Annual compound interest calculation",
+        "category": "Finance & Economics",
+        "formula": "Amount = Principal × (1 + rate/100)^years",
+        "pitfall": "Using linear simple interest formula P × (1 + r × n / 100).",
+        "lesson_preview": "Compound interest requires exponential power ^n, not linear multiplication.",
+    },
+    "time_speed_distance": {
+        "description": "Distance from speed and time (minutes)",
+        "category": "Physics",
+        "formula": "Distance = Speed × (Minutes / 60)",
+        "pitfall": "Multiplying km/h directly by minutes without converting to hours.",
+        "lesson_preview": "Divide minutes by 60 before multiplying by km/h for dimensional consistency.",
+    },
+    "binary_to_decimal": {
+        "description": "Binary string to decimal integer",
+        "category": "Computer Architecture",
+        "formula": "Decimal = Σ (bit_i × 2^i) from right-to-left",
+        "pitfall": "Reading bits in reverse order (left-to-right MSB first as 2^0).",
+        "lesson_preview": "Binary evaluated right-to-left where rightmost bit is 2^0.",
+    },
+    "area_composite": {
+        "description": "Rectangle + semicircle composite area",
+        "category": "Geometry",
+        "formula": "Area = (L × W) + 0.5 × π × (W / 2)²",
+        "pitfall": "Using full-circle formula πr² instead of semicircle 0.5 × πr².",
+        "lesson_preview": "Halve the circular cap area for semicircle: 0.5 × π × r².",
+    },
+    "probability_union": {
+        "description": "Probability union P(A∪B)",
+        "category": "Statistics",
+        "formula": "P(A∪B) = P(A) + P(B) − P(A∩B)",
+        "pitfall": "Adding P(A) + P(B) without subtracting intersection P(A∩B).",
+        "lesson_preview": "Inclusion-Exclusion: Subtract joint intersection P(A∩B) to prevent double counting.",
+    },
+    "roman_numeral": {
+        "description": "Roman numeral to decimal",
+        "category": "Algorithms",
+        "formula": "Subtractive Roman: IV=4, IX=9, XL=40, XC=90...",
+        "pitfall": "Pure additive sum: ignores subtractive prefix combinations.",
+        "lesson_preview": "If numeral value is less than the next character, subtract it.",
+    },
+    "temperature_conversion": {
+        "description": "Fahrenheit to Celsius conversion",
+        "category": "Thermodynamics",
+        "formula": "Celsius = (Fahrenheit − 32) × 5 / 9",
+        "pitfall": "Order of operations error: multiplying before subtracting 32.",
+        "lesson_preview": "Parentheses precedence: (Fahrenheit − 32) must be computed FIRST before × 5/9.",
+    },
 }
 
 LESSONS = {

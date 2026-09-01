@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 
 class RunRequest(BaseModel):
     task_type: str
+    custom_prompt: Optional[str] = None
+    force_learn: bool = False
     max_iterations: int = Field(default=3, ge=1, le=10)
     agent_mode: str = Field(default="single", pattern="^(single|multi)$")
 
@@ -218,6 +220,10 @@ class SemanticSearchResult(BaseModel):
 class TaskTypeOut(BaseModel):
     id: str
     description: str
+    category: Optional[str] = None
+    formula: Optional[str] = None
+    pitfall: Optional[str] = None
+    lesson_preview: Optional[str] = None
 
 
 class FailurePattern(BaseModel):

@@ -95,6 +95,7 @@ class OrchestratorAgent:
         self,
         task_type: str,
         max_iterations: int = 3,
+        force_learn: bool = False,
         on_event=None,
     ) -> dict:
         import uuid
@@ -121,7 +122,7 @@ class OrchestratorAgent:
                 on_event({"type": "iteration_begin", "data": {"iteration": iteration}})
 
             # ── Memory Agent: retrieve lessons ─────────────────────────────
-            lessons = self.memory_agent.retrieve(task_type)
+            lessons = [] if (force_learn and iteration == 1) else self.memory_agent.retrieve(task_type)
             if on_event:
                 on_event({
                     "type": "lessons_retrieved",

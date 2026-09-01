@@ -10,6 +10,7 @@ let ws = null;
 let charts = {};
 let cachedStats = {};
 let cachedLessons = [];
+let cachedTasksMap = {};
 let autopilotTimer = null;
 let galaxyInstance = null;
 
@@ -1062,6 +1063,53 @@ function renderEffectivenessChart(lessons) {
 // ---------------------------------------------------------------------------
 // Trace Rendering & Run Action
 // ---------------------------------------------------------------------------
+let currentLearnMode = "auto";
+
+const learnModeAuto = document.getElementById("learnModeAuto");
+const learnModeForce = document.getElementById("learnModeForce");
+
+if (learnModeAuto && learnModeForce) {
+  learnModeAuto.addEventListener("click", () => {
+    if (window.sound) window.sound.click();
+    currentLearnMode = "auto";
+    learnModeAuto.classList.add("active");
+    learnModeForce.classList.remove("active");
+    showToast("Smart Auto: Agent will check & apply existing memory lessons.", "info");
+  });
+
+  learnModeForce.addEventListener("click", () => {
+    if (window.sound) window.sound.click();
+    currentLearnMode = "force";
+    learnModeForce.classList.add("active");
+    learnModeAuto.classList.remove("active");
+    showToast("Simulate Learning Cycle: Agent will simulate 1st-time mistake, reflect & self-correct live!", "info");
+  });
+}
+
+function updateTaskPreview(taskId) {
+  const task = cachedTasksMap[taskId];
+  if (!task) return;
+
+  const previewCategory = document.getElementById("previewCategory");
+  const previewFormula = document.getElementById("previewFormula");
+  const previewPitfall = document.getElementById("previewPitfall");
+  const previewLesson = document.getElementById("previewLesson");
+
+  if (previewCategory) previewCategory.textContent = task.category || "General Reasoning";
+  if (previewFormula) previewFormula.textContent = task.formula || "Algorithmic Solver";
+  if (previewPitfall) previewPitfall.textContent = task.pitfall || "Standard LLM hallucination on edge-cases.";
+  if (previewLesson) previewLesson.textContent = task.lesson_preview || task.description;
+}
+
+if (elements.taskType) {
+  elements.taskType.addEventListener("change", (e) => {
+    updateTaskPreview(e.target.value);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Trace Rendering & Run Action
+// ---------------------------------------------------------------------------
 function fmtNum(n) {
   const num = Number(n);
   return Number.isInteger(num) ? num : num.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
@@ -1071,49 +1119,103 @@ function renderTrace(result) {
   elements.traceStatus.className = `badge ${result.success ? "success" : "fail"}`;
   elements.traceStatus.textContent = result.success ? "SOLVED" : "FAILED";
 
+  const isMultiIter = result.iterations_used > 1;
+  const learnedLive = isMultiIter && result.success;
+
   const summary = `
     <div class="trace-summary-card">
-      <div class="trace-prompt"><strong>Task:</strong> ${result.task_prompt}</div>
-      <div class="badge ${result.success ? "success" : "fail"}">
-        ${result.success ? "Solved" : "Not Solved"} in ${result.iterations_used} iteration(s)
+      <div>
+        <div class="trace-prompt"><strong>Task:</strong> ${result.task_prompt}</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px; font-weight:700;">
+          Mode: <span style="color:var(--electric-blue);">${result.agent_mode.toUpperCase()}</span> | 
+          Behavior: <span style="color:${learnedLive ? 'var(--violet)' : 'var(--emerald)'};">${learnedLive ? 'Self-Evolved via Reflexion Loop' : 'Instant Zero-Repeat Pass'}</span>
+        </div>
+      </div>
+      <div class="badge ${result.success ? "success" : "fail"}" style="font-size:13px; padding:8px 16px;">
+        ${result.success ? `✓ Solved in ${result.iterations_used} Iteration(s)` : `✗ Failed after ${result.iterations_used} Iteration(s)`}
       </div>
     </div>
   `;
 
   const steps = result.trace
-    .map((s) => {
+    .map((s, idx) => {
       const confPct = Math.round((s.confidence || 0.5) * 100);
+      const isFirstOfMulti = isMultiIter && s.iteration === 1 && !s.success;
+      const isSuccessStep = s.success;
+
+      const headerTitle = isFirstOfMulti
+        ? `<span style="color:var(--rose);">⚠️ Attempt 1 (Initial Untrained Flaw Detected)</span>`
+        : isSuccessStep && isMultiIter
+          ? `<span style="color:var(--emerald);">✨ Attempt ${s.iteration} (Self-Corrected with Cognitive Memory)</span>`
+          : `<span>Iteration ${s.iteration} ${s.agent_mode === "multi" ? "(Multi-Agent Council)" : ""}</span>`;
+
       const lessonsBlock = (s.lessons_available && s.lessons_available.length)
-        ? `<div class="trace-row"><span class="trace-label">Lessons Active</span><span class="trace-content">${s.lessons_available.join("<br/>")}</span></div>`
-        : `<div class="trace-row"><span class="trace-label">Lessons Active</span><span class="trace-content" style="color:var(--text-dim);">None</span></div>`;
+        ? `<div class="trace-row"><span class="trace-label">Lessons Active</span><span class="trace-content" style="color:var(--emerald); font-weight:700;">✓ ${s.lessons_available.join("<br/>✓ ")}</span></div>`
+        : `<div class="trace-row"><span class="trace-label">Lessons Active</span><span class="trace-content" style="color:var(--text-dim);">(None — Solving from raw intuition)</span></div>`;
 
       const critiqueBlock = s.critique
-        ? `<div class="critique-box"><strong>Critic / Verifier:</strong> ${s.critique}</div>`
+        ? `<div class="critique-box" style="border-left:4px solid var(--rose); background:#fff1f2; color:#be123c; padding:12px; border-radius:8px; margin:8px 0;">
+            <div style="font-weight:800; font-size:11px; text-transform:uppercase; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+              🔍 Critic &amp; AST Verifier Flaw Analysis
+            </div>
+            ${s.critique}
+          </div>`
         : "";
 
       const lessonStoredBlock = s.lesson_stored
-        ? `<div class="lesson-box"><strong>💡 Reflected &amp; Saved Lesson:</strong> ${s.lesson_stored}</div>`
+        ? `<div class="lesson-box" style="border-left:4px solid var(--violet); background:#f5f3ff; color:#6d28d9; padding:12px; border-radius:8px; margin:8px 0;">
+            <div style="font-weight:800; font-size:11px; text-transform:uppercase; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+              💡 Reflexion Synthesis ➔ Distilled Reusable Rule into Cognitive Memory
+            </div>
+            <strong>${s.lesson_stored}</strong>
+          </div>`
         : "";
 
+      // Multi-Agent Role Breakdown
+      let multiAgentRolesHtml = "";
+      if (s.agent_mode === "multi") {
+        multiAgentRolesHtml = `
+          <div class="role-grid">
+            <div class="role-box memory">
+              <div class="role-box-header">🧠 Memory Agent</div>
+              <div>${s.lessons_available && s.lessons_available.length ? `${s.lessons_available.length} relevant lessons retrieved from vector store.` : '0 prior lessons matched. Requesting first-principles solve.'}</div>
+            </div>
+            <div class="role-box solver">
+              <div class="role-box-header">🤖 Solver Agent</div>
+              <div>Computed answer <code>${fmtNum(s.answer)}</code> with ${confPct}% confidence.</div>
+            </div>
+            <div class="role-box critic">
+              <div class="role-box-header">🔍 Critic Agent</div>
+              <div>${s.success ? 'Ground-truth verified. Solution certified.' : 'Flaw identified. Dispatched critique & reflexion.'}</div>
+            </div>
+            <div class="role-box vault">
+              <div class="role-box-header">🔐 Merkle Vault</div>
+              <div>Cryptographic SHA-256 block recorded &amp; chained.</div>
+            </div>
+          </div>
+        `;
+      }
+
       return `
-        <div class="step-card">
+        <div class="step-card" style="border-left: 5px solid ${s.success ? 'var(--emerald)' : 'var(--rose)'};">
           <div class="step-header">
-            <span>Iteration ${s.iteration} ${s.agent_mode === "multi" ? "(Multi-Agent)" : ""}</span>
+            ${headerTitle}
             <div style="display:flex; align-items:center; gap:12px;">
               <div>
                 <span class="trace-label" style="display:inline; width:auto;">Confidence:</span>
-                <span class="confidence-bar"><span class="confidence-fill" style="width:${confPct}%"></span></span>
+                <span class="confidence-bar"><span class="confidence-fill" style="width:${confPct}%; background:${s.success ? 'var(--emerald)' : 'var(--rose)'};"></span></span>
                 <span style="font-family:var(--font-mono); font-size:11px;">${confPct}%</span>
               </div>
-              <span class="badge ${s.success ? "success" : "fail"}">${s.success ? "Correct" : "Incorrect"}</span>
+              <span class="badge ${s.success ? "success" : "fail"}">${s.success ? "✓ Correct" : "✗ Flawed"}</span>
             </div>
           </div>
           <div class="step-body">
             <div class="trace-row"><span class="trace-label">Reasoning</span><span class="trace-content">${s.reasoning || "Computed solution from principles."}</span></div>
-            <div class="trace-row"><span class="trace-label">Output</span><span class="trace-content">Answer: <strong>${fmtNum(s.answer)}</strong> | Correct: <strong>${fmtNum(s.correct_answer)}</strong></span></div>
+            <div class="trace-row"><span class="trace-label">Output</span><span class="trace-content">Answer: <strong>${fmtNum(s.answer)}</strong> | Ground Truth: <strong>${fmtNum(s.correct_answer)}</strong></span></div>
             ${lessonsBlock}
             ${critiqueBlock}
             ${lessonStoredBlock}
+            ${multiAgentRolesHtml}
           </div>
         </div>
       `;
@@ -1127,7 +1229,7 @@ elements.runBtn.addEventListener("click", async () => {
   if (window.sound) window.sound.click();
   elements.runBtn.disabled = true;
   elements.runBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Running…`;
-  elements.traceContainer.innerHTML = `<p class="empty-state">Agent executing in ${currentMode} mode…</p>`;
+  elements.traceContainer.innerHTML = `<p class="empty-state">Agent executing in ${currentMode} mode (${currentLearnMode === "force" ? "Forced Learning Cycle" : "Smart Auto Memory"})…</p>`;
 
   try {
     const res = await fetch(`${API}/api/run`, {
@@ -1135,6 +1237,7 @@ elements.runBtn.addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         task_type: elements.taskType.value,
+        force_learn: currentLearnMode === "force",
         max_iterations: Number(elements.maxIter.value) || 3,
         agent_mode: currentMode,
       }),
@@ -1143,9 +1246,14 @@ elements.runBtn.addEventListener("click", async () => {
     if (!res.ok) throw new Error(await res.text());
     const result = await res.json();
     renderTrace(result);
+
     if (result.success) {
       window.sound.success();
-      window.sound.speak(`Task completed successfully in ${result.iterations_used} iterations.`, "system");
+      if (result.iterations_used > 1) {
+        window.sound.speak(`Reflexion complete. Agent self-corrected and solved the task on attempt ${result.iterations_used}.`, "system");
+      } else {
+        window.sound.speak(`Task solved on first attempt using cognitive memory.`, "system");
+      }
     } else {
       window.sound.error();
     }
@@ -1156,7 +1264,7 @@ elements.runBtn.addEventListener("click", async () => {
     showToast(`Error: ${err.message}`, "error");
   } finally {
     elements.runBtn.disabled = false;
-    elements.runBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Agent`;
+    elements.runBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Reflexion Agent`;
   }
 });
 
@@ -1257,9 +1365,19 @@ async function loadTasks() {
   try {
     const res = await fetch(`${API}/api/tasks`);
     const tasks = await res.json();
+    cachedTasksMap = {};
+    tasks.forEach((t) => {
+      cachedTasksMap[t.id] = t;
+    });
+
     const optionsHtml = tasks.map((t) => `<option value="${t.id}">${t.description}</option>`).join("");
 
-    if (elements.taskType) elements.taskType.innerHTML = optionsHtml;
+    if (elements.taskType) {
+      elements.taskType.innerHTML = optionsHtml;
+      if (tasks.length > 0) {
+        updateTaskPreview(elements.taskType.value || tasks[0].id);
+      }
+    }
     if (elements.totTaskType) elements.totTaskType.innerHTML = optionsHtml;
     if (elements.debateTaskType) elements.debateTaskType.innerHTML = optionsHtml;
     

@@ -122,7 +122,18 @@ def health():
 # ---------------------------------------------------------------------------
 @app.get("/api/tasks", response_model=list[TaskTypeOut])
 def list_tasks():
-    return [{"id": k, "description": v} for k, v in task_bank.TASK_DESCRIPTIONS.items()]
+    meta = getattr(task_bank, "TASK_METADATA", {})
+    return [
+        {
+            "id": k,
+            "description": meta.get(k, {}).get("description", v),
+            "category": meta.get(k, {}).get("category", "General Reasoning"),
+            "formula": meta.get(k, {}).get("formula", ""),
+            "pitfall": meta.get(k, {}).get("pitfall", ""),
+            "lesson_preview": meta.get(k, {}).get("lesson_preview", ""),
+        }
+        for k, v in task_bank.TASK_DESCRIPTIONS.items()
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +156,7 @@ async def run_agent(req: RunRequest):
                 task_type=req.task_type,
                 max_iterations=req.max_iterations,
                 agent_mode=req.agent_mode,
+                force_learn=req.force_learn,
                 on_event=on_event,
             )
             is_success = result.get("success", False) if isinstance(result, dict) else getattr(result, "success", False)

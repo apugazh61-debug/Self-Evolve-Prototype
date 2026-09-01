@@ -555,6 +555,122 @@ body {
   box-shadow: var(--inset-socket), 0 0 8px var(--electric-blue-glow);
 }
 
+/* ═══════════════════════════════════════════════════════ TASK PREVIEW CARD ═══ */
+.task-preview-card {
+  background: var(--plate-sunken);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-left: 4px solid var(--electric-blue);
+  border-radius: 12px;
+  padding: 14px 18px;
+  box-shadow: var(--inset-socket);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+  padding-bottom: 8px;
+}
+
+.category-pill {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+  color: #0369a1;
+  box-shadow: var(--extrusion-sm);
+}
+
+.formula-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #ffffff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.preview-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.preview-label {
+  font-weight: 800;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.preview-label.danger { color: var(--rose); }
+.preview-label.success { color: var(--emerald); }
+
+.preview-text {
+  color: var(--text-engraved);
+  font-weight: 600;
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.role-box {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  font-size: 12px;
+}
+
+.role-box-header {
+  font-weight: 800;
+  font-size: 11px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.role-box.solver { border-left: 3px solid var(--electric-blue); }
+.role-box.solver .role-box-header { color: #0284c7; }
+
+.role-box.critic { border-left: 3px solid var(--violet); }
+.role-box.critic .role-box-header { color: var(--violet); }
+
+.role-box.memory { border-left: 3px solid var(--emerald); }
+.role-box.memory .role-box-header { color: var(--emerald); }
+
+.role-box.vault { border-left: 3px solid var(--amber); }
+.role-box.vault .role-box-header { color: var(--amber); }
+
 .mode-toggle {
   display: flex;
   gap: 6px;

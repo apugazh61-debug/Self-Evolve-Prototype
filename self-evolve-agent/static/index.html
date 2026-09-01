@@ -254,39 +254,72 @@
       <!-- Controls -->
       <div class="glass-card controls-card">
         <div class="card-header">
-          <span class="card-title">Agent Configuration</span>
+          <span class="card-title">Agent Configuration &amp; Reflexion Sandbox</span>
+          <span class="live-badge" style="background: rgba(14, 165, 233, 0.15); color: var(--electric-blue);"><span class="pulse-dot"></span>ZERO-REPEAT AI</span>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Task Type</label>
+          <label class="form-label">Task Type / Domain</label>
           <select id="taskType" class="form-select"></select>
         </div>
 
+        <!-- Dynamic Task Preview & Common Pitfall Card -->
+        <div class="task-preview-card" id="taskPreviewCard">
+          <div class="preview-header">
+            <span class="category-pill" id="previewCategory">Financial Math</span>
+            <span class="formula-tag" id="previewFormula">Final = Price × (1 − Discount / 100)</span>
+          </div>
+          <div class="preview-body">
+            <div class="preview-row">
+              <span class="preview-label danger">⚠️ Typical AI Mistake:</span>
+              <span class="preview-text" id="previewPitfall">Treating percentage as a flat dollar subtraction.</span>
+            </div>
+            <div class="preview-row">
+              <span class="preview-label success">💡 Cognitive Lesson:</span>
+              <span class="preview-text" id="previewLesson">Multiply price by (1 − discount/100). Never subtract percent directly.</span>
+            </div>
+          </div>
+        </div>
+
         <div class="form-group">
-          <label class="form-label">Agent Mode</label>
+          <label class="form-label">Demonstration Mode</label>
           <div class="mode-toggle">
-            <button class="mode-btn active" id="modeSingle" data-mode="single">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20v-1a8 8 0 0 1 16 0v1"/></svg>
-              Single Agent
+            <button class="mode-btn active" id="learnModeAuto" data-learn="auto" title="Reuses existing lessons if available">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+              Smart Auto Memory
             </button>
-            <button class="mode-btn" id="modeMulti" data-mode="multi">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              Multi-Agent
+            <button class="mode-btn" id="learnModeForce" data-learn="force" title="Forces 1st attempt flaw to demonstrate real-time reflection & self-correction">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              Simulate Learning Cycle (Flaw ➔ Pass)
             </button>
           </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Max Iterations <span class="form-hint" id="iterHint">3</span></label>
+          <label class="form-label">Agent Collaboration Architecture</label>
+          <div class="mode-toggle">
+            <button class="mode-btn active" id="modeSingle" data-mode="single">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20v-1a8 8 0 0 1 16 0v1"/></svg>
+              Single Reflexion Loop
+            </button>
+            <button class="mode-btn" id="modeMulti" data-mode="multi">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Multi-Agent Council (Solver + Critic + Memory)
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Max Iteration Budget <span class="form-hint" id="iterHint">3</span></label>
           <input type="range" id="maxIter" class="form-range" min="1" max="8" value="3" />
         </div>
 
         <div class="run-actions">
           <button class="btn-primary" id="runBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Run Agent
+            Run Reflexion Agent
           </button>
-          <button class="btn-ghost" id="resetBtn">
+          <button class="btn-ghost" id="resetBtn" title="Clear all stored memory lessons">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
             Reset Memory
           </button>

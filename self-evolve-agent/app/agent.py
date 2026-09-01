@@ -46,6 +46,7 @@ class ReflexionAgent:
         task_type: str,
         max_iterations: int = 3,
         agent_mode: str = "single",
+        force_learn: bool = False,
         on_event: Optional[Callable[[dict], None]] = None,
     ) -> dict:
         if task_type not in task_bank.GENERATORS:
@@ -54,7 +55,7 @@ class ReflexionAgent:
         # Delegate to multi-agent orchestrator
         if agent_mode == "multi":
             orch = OrchestratorAgent(self.llm)
-            return orch.run(task_type=task_type, max_iterations=max_iterations, on_event=on_event)
+            return orch.run(task_type=task_type, max_iterations=max_iterations, force_learn=force_learn, on_event=on_event)
 
         # ── Single-agent Reflexion loop ────────────────────────────────────
         run_id = str(uuid.uuid4())
@@ -78,8 +79,8 @@ class ReflexionAgent:
             if on_event:
                 on_event({"type": "iteration_begin", "data": {"iteration": iteration}})
 
-            # Retrieve lessons from memory
-            lessons = memory.get_lessons(task_type)
+            # Retrieve lessons from memory (or simulate fresh encounter if force_learn on iteration 1)
+            lessons = [] if (force_learn and iteration == 1) else memory.get_lessons(task_type)
             if on_event:
                 on_event({
                     "type": "lessons_retrieved",
