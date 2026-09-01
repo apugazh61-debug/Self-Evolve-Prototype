@@ -1212,6 +1212,65 @@ body {
   gap: 16px;
 }
 
+/* ═══════════════════════════════════════════════════════ MCTS ALPHAGO ═══ */
+.mcts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mcts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.mcts-card {
+  background: var(--plate-raised);
+  border: 1px solid rgba(255,255,255,0.9);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: var(--extrusion-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.mcts-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--extrusion-md);
+}
+
+.mcts-card.winner {
+  border: 2px solid var(--cyan);
+  box-shadow: var(--extrusion-md), 0 0 16px rgba(6, 182, 212, 0.25);
+  background: linear-gradient(180deg, #ffffff 0%, #ecfeff 100%);
+}
+
+.mcts-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding-bottom: 8px;
+}
+
+.mcts-policy-meter {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.mcts-policy-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
 /* ═══════════════════════════════════════════════════════ MEMORY CARTRIDGES ═══ */
 .memory-toolbar {
   display: flex;

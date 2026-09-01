@@ -76,6 +76,16 @@ const elements = {
   csuiteStatus: document.getElementById("csuiteStatus"),
   csuiteContainer: document.getElementById("csuiteContainer"),
 
+  // MCTS AlphaGo
+  mctsTaskType: document.getElementById("mctsTaskType"),
+  mctsSimulations: document.getElementById("mctsSimulations"),
+  mctsSimsHint: document.getElementById("mctsSimsHint"),
+  mctsCpuct: document.getElementById("mctsCpuct"),
+  mctsCpuctHint: document.getElementById("mctsCpuctHint"),
+  mctsRunBtn: document.getElementById("mctsRunBtn"),
+  mctsStatus: document.getElementById("mctsStatus"),
+  mctsContainer: document.getElementById("mctsContainer"),
+
   // Vision Agent
   visionHintInput: document.getElementById("visionHintInput"),
   visionSolveBtn: document.getElementById("visionSolveBtn"),
@@ -1017,6 +1027,119 @@ function renderCSuiteCouncil(data) {
 }
 
 // ---------------------------------------------------------------------------
+// Monte Carlo Tree Search (MCTS AlphaGo)
+// ---------------------------------------------------------------------------
+if (elements.mctsSimulations && elements.mctsSimsHint) {
+  elements.mctsSimulations.addEventListener("input", (e) => {
+    elements.mctsSimsHint.textContent = e.target.value;
+  });
+}
+
+if (elements.mctsCpuct && elements.mctsCpuctHint) {
+  elements.mctsCpuct.addEventListener("input", (e) => {
+    elements.mctsCpuctHint.textContent = Number(e.target.value).toFixed(2);
+  });
+}
+
+if (elements.mctsRunBtn) {
+  elements.mctsRunBtn.addEventListener("click", async () => {
+    if (window.sound) window.sound.click();
+    elements.mctsRunBtn.disabled = true;
+    elements.mctsRunBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Simulating UCT Rollouts…`;
+    elements.mctsContainer.innerHTML = `<p class="empty-state">Running Monte Carlo simulation rollouts, evaluating Q-values & backpropagating rewards…</p>`;
+
+    try {
+      const taskVal = elements.mctsTaskType ? elements.mctsTaskType.value : "percentage_discount";
+      const simsVal = Number(elements.mctsSimulations?.value) || 50;
+      const cpuctVal = Number(elements.mctsCpuct?.value) || 1.41;
+
+      const res = await fetch(`${API}/api/mcts/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task_type: taskVal,
+          simulations: simsVal,
+          c_puct: cpuctVal,
+        }),
+      });
+      const data = await res.json();
+      renderMCTSResult(data);
+      if (window.sound) window.sound.success();
+      window.sound.speak(`MCTS AlphaGo search completed. Policy converged on optimal answer ${data.optimal_solution}.`, "system");
+      showToast("MCTS search converged on optimal trajectory! 🎯", "success");
+    } catch (err) {
+      elements.mctsContainer.innerHTML = `<p class="empty-state" style="color:var(--rose)">Error: ${err.message}</p>`;
+      showToast(`Error: ${err.message}`, "error");
+    } finally {
+      elements.mctsRunBtn.disabled = false;
+      elements.mctsRunBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg> Execute MCTS Search`;
+    }
+  });
+}
+
+function renderMCTSResult(data) {
+  if (elements.mctsStatus) {
+    elements.mctsStatus.className = "badge success";
+    elements.mctsStatus.textContent = `CONVERGENCE: ${data.mcts_convergence_confidence || '98%'}`;
+  }
+
+  const branches = data.mcts_tree_stats || [];
+  const totalVisits = data.simulations_executed || 50;
+
+  const branchCards = branches.map(b => {
+    const isWin = b.is_optimal_converged;
+    const visitPct = Math.round((b.visits / totalVisits) * 100);
+    const qPct = Math.round((b.q_value || 0) * 100);
+
+    return `
+      <div class="mcts-card ${isWin ? 'winner' : ''}">
+        <div class="mcts-card-header">
+          <strong style="color:${isWin ? 'var(--cyan)' : '#334155'}; font-size:13px;">${b.branch}</strong>
+          ${isWin ? '<span class="score-badge high" style="background:var(--cyan); color:#fff;">✓ OPTIMAL POLICY</span>' : '<span class="score-badge low">PRUNED</span>'}
+        </div>
+        <div style="font-size:12px; color:#1e293b; line-height:1.4;">${b.thought}</div>
+        
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:var(--text-dim);">
+            <span>Visit Frequency: ${b.visits} / ${totalVisits}</span>
+            <span>${visitPct}%</span>
+          </div>
+          <div class="mcts-policy-meter">
+            <div class="mcts-policy-fill" style="width:${visitPct}%; background:${isWin ? 'var(--cyan)' : '#cbd5e1'};"></div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(0,0,0,0.06); padding-top:8px; font-size:11px; font-family:var(--font-mono);">
+          <span>Q(s,a): <strong>${b.q_value}</strong> (${qPct}%)</span>
+          <span>UCB1: <strong>${b.ucb1_score}</strong></span>
+        </div>
+        
+        <div class="tot-output-box" style="margin-top:2px;">
+          Output: <strong>${b.proposed_value}</strong>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  elements.mctsContainer.innerHTML = `
+    <div class="trace-summary-card">
+      <div>
+        <div class="trace-prompt"><strong>MCTS Objective:</strong> ${data.prompt}</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px; font-weight:700;">
+          Simulations: <strong>${data.simulations_executed}</strong> | c_puct: <strong>${data.c_puct_exploration_constant}</strong> | Latency: <strong>${data.search_latency_ms} ms</strong>
+        </div>
+      </div>
+      <div class="badge success" style="font-size:13px; padding:8px 16px;">
+        Optimal Answer: ${data.optimal_solution} (Ground Truth: ${data.ground_truth})
+      </div>
+    </div>
+    <div class="mcts-grid">
+      ${branchCards}
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
 // Tool Forge
 // ---------------------------------------------------------------------------
 async function loadCustomTools() {
@@ -1642,6 +1765,7 @@ async function loadTasks() {
     if (elements.totTaskType) elements.totTaskType.innerHTML = optionsHtml;
     if (elements.debateTaskType) elements.debateTaskType.innerHTML = optionsHtml;
     if (elements.csuiteTaskType) elements.csuiteTaskType.innerHTML = optionsHtml;
+    if (elements.mctsTaskType) elements.mctsTaskType.innerHTML = optionsHtml;
     
     const csSelect = document.getElementById("csuiteTaskSelect");
     if (csSelect) csSelect.innerHTML = optionsHtml;

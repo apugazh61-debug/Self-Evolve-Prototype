@@ -211,7 +211,7 @@ def query_graph_rag(node_id: str = "concept-percentage", max_hops: int = 2):
 # ---------------------------------------------------------------------------
 @app.post("/api/mcts/search")
 def search_mcts(req: MCTSRequest):
-    return mcts_engine.search(req.task_type)
+    return mcts_engine.search(req.task_type, simulations=req.simulations, c_puct=req.c_puct)
 
 
 # ---------------------------------------------------------------------------

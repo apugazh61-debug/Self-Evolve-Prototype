@@ -300,6 +300,7 @@ class CSuiteRequest(BaseModel):
 class MCTSRequest(BaseModel):
     task_type: str = "percentage_discount"
     simulations: int = 50
+    c_puct: float = 1.414
 
 
 class WebhookPRRequest(BaseModel):
