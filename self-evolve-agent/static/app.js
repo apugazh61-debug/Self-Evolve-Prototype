@@ -621,23 +621,35 @@ function renderPatcherResult(data) {
 // ---------------------------------------------------------------------------
 // Tree of Thoughts (ToT)
 // ---------------------------------------------------------------------------
+const totBranchFactor = document.getElementById("totBranchFactor");
+const totBranchHint = document.getElementById("totBranchHint");
+if (totBranchFactor && totBranchHint) {
+  totBranchFactor.addEventListener("input", (e) => {
+    totBranchHint.textContent = e.target.value;
+  });
+}
+
 if (elements.totRunBtn) {
   elements.totRunBtn.addEventListener("click", async () => {
-    window.sound.click();
+    if (window.sound) window.sound.click();
     elements.totRunBtn.disabled = true;
     elements.totRunBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Exploring Tree…`;
-    elements.totTreeContainer.innerHTML = `<p class="empty-state">Exploring parallel reasoning paths & evaluating state heuristics…</p>`;
+    elements.totTreeContainer.innerHTML = `<p class="empty-state">Generating multi-depth candidate branches, evaluating heuristics & pruning sub-optimal paths…</p>`;
 
     try {
+      const branchFactor = Number(totBranchFactor?.value) || 3;
       const res = await fetch(`${API}/api/tot/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task_type: elements.totTaskType.value }),
+        body: JSON.stringify({
+          task_type: elements.totTaskType.value,
+          branching_factor: branchFactor,
+        }),
       });
       const data = await res.json();
       renderToTTree(data);
       if (data.is_correct) window.sound.success(); else window.sound.error();
-      window.sound.speak(`Tree of Thoughts evaluated. Optimal answer is ${data.final_answer}`, "system");
+      window.sound.speak(`Tree of Thoughts evaluated. Winning strategy converged on ${data.final_answer}`, "system");
       showToast(data.is_correct ? "Optimal path converged! 🎯" : "Branch evaluated.", data.is_correct ? "success" : "error");
     } catch (err) {
       elements.totTreeContainer.innerHTML = `<p class="empty-state" style="color:var(--rose)">Error: ${err.message}</p>`;
@@ -652,30 +664,61 @@ function renderToTTree(data) {
   elements.totStatus.className = `badge ${data.is_correct ? "success" : "fail"}`;
   elements.totStatus.textContent = data.is_correct ? "CONVERGED OPTIMAL" : "REASONING FLAW";
 
+  const stats = data.tree_stats || {};
+
+  const statsHtml = `
+    <div class="tot-stats-grid">
+      <div class="stat-card" style="padding:10px 14px;"><div class="stat-body"><div class="stat-value" style="font-size:18px;">${stats.total_nodes || data.tree_nodes.length}</div><div class="stat-label">Nodes Explored</div></div></div>
+      <div class="stat-card" style="padding:10px 14px;"><div class="stat-body"><div class="stat-value" style="font-size:18px; color:var(--rose);">${stats.pruned_branches || 0}</div><div class="stat-label">Pruned Branches</div></div></div>
+      <div class="stat-card" style="padding:10px 14px;"><div class="stat-body"><div class="stat-value" style="font-size:18px; color:var(--emerald);">${stats.max_score || 99}%</div><div class="stat-label">Winning Score</div></div></div>
+      <div class="stat-card" style="padding:10px 14px;"><div class="stat-body"><div class="stat-value" style="font-size:18px; color:var(--violet);">${stats.branching_factor || 3}x</div><div class="stat-label">Branch Factor</div></div></div>
+    </div>
+  `;
+
   const nodesByDepth = {};
   data.tree_nodes.forEach(n => {
     nodesByDepth[n.depth] = nodesByDepth[n.depth] || [];
     nodesByDepth[n.depth].push(n);
   });
 
+  const depthNames = {
+    0: "Depth 0 — Root Goal Formulation",
+    1: "Depth 1 — Parallel Strategy Hypotheses",
+    2: "Depth 2 — Step Execution & Tolerance Check",
+    3: "Depth 3 — Global Optimal Consensus",
+  };
+
   const levelsHtml = Object.keys(nodesByDepth).map(depth => {
     const nodes = nodesByDepth[depth];
     const nodeCards = nodes.map(n => {
       const isWinner = data.winning_path.includes(n.id);
+      const isPruned = n.status === "pruned";
+
+      let statusBadge = `<span class="score-badge ${n.score >= 80 ? 'high' : (n.score >= 50 ? 'mid' : 'low')}">Score: ${n.score}</span>`;
+      if (isWinner && n.depth > 0) {
+        statusBadge = `<span class="score-badge high" style="background:#10b981; color:#fff;">✓ WINNER (${n.score})</span>`;
+      } else if (isPruned) {
+        statusBadge = `<span class="score-badge low" style="background:#f43f5e; color:#fff;">✂ PRUNED</span>`;
+      }
+
       return `
-        <div class="tot-node ${isWinner ? 'winner' : ''} ${n.status === 'pruned' ? 'pruned' : ''}">
+        <div class="tot-node ${isWinner ? 'winner' : ''} ${isPruned ? 'pruned' : ''}">
           <div class="tot-node-header">
-            <span>${n.id} (${n.reasoning_type})</span>
-            <span class="score-badge ${n.score >= 80 ? 'high' : (n.score >= 50 ? 'mid' : 'low')}">Score: ${n.score}</span>
+            <span style="display:flex; align-items:center; gap:6px;">
+              <strong>${n.id}</strong>
+              <span class="tot-reasoning-badge">${n.reasoning_type || 'logic'}</span>
+            </span>
+            ${statusBadge}
           </div>
           <div class="tot-node-thought">${n.thought}</div>
-          ${n.output_val ? `<div style="font-family:var(--font-mono); font-size:11px; color:var(--electric-blue); font-weight:700;">Output: ${n.output_val}</div>` : ''}
+          ${n.prune_reason ? `<div class="tot-prune-reason">⚠️ ${n.prune_reason}</div>` : ''}
+          ${n.output_val ? `<div class="tot-output-box">Output: <strong>${fmtNum(n.output_val)}</strong></div>` : ''}
         </div>
       `;
     }).join("");
 
     return `
-      <div style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-dim); margin-top:8px;">Depth Level ${depth}</div>
+      <div class="tot-depth-title">${depthNames[depth] || `Depth Level ${depth}`}</div>
       <div class="tot-level">${nodeCards}</div>
     `;
   }).join("");
@@ -683,8 +726,11 @@ function renderToTTree(data) {
   elements.totTreeContainer.innerHTML = `
     <div class="trace-summary-card">
       <div class="trace-prompt"><strong>Task:</strong> ${data.task_prompt}</div>
-      <div class="badge ${data.is_correct ? 'success' : 'fail'}">Answer: ${data.final_answer} | Ground Truth: ${data.correct_answer}</div>
+      <div class="badge ${data.is_correct ? 'success' : 'fail'}" style="font-size:13px; padding:8px 16px;">
+        Answer: ${data.final_answer} | Ground Truth: ${data.correct_answer}
+      </div>
     </div>
+    ${statsHtml}
     ${levelsHtml}
   `;
 }

@@ -964,18 +964,36 @@ body {
 .tot-tree-container {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
+}
+
+.tot-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.tot-depth-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .tot-level {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
-  justify-content: center;
   position: relative;
 }
 
 .tot-node {
-  flex: 1;
   background: var(--plate-raised);
   border: 1px solid rgba(255,255,255,0.9);
   border-radius: 14px;
@@ -983,8 +1001,9 @@ body {
   box-shadow: var(--extrusion-sm);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   transition: all 0.2s ease;
+  position: relative;
 }
 
 .tot-node.winner {
@@ -994,22 +1013,61 @@ body {
 }
 
 .tot-node.pruned {
-  opacity: 0.6;
+  background: #f8fafc;
   border-left: 4px solid var(--rose);
+  opacity: 0.75;
 }
 
 .tot-node-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 11px;
   font-weight: 800;
   font-family: var(--font-mono);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding-bottom: 6px;
+}
+
+.tot-reasoning-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 .tot-node-thought {
   font-size: 12px;
   color: #1e293b;
-  line-height: 1.4;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.tot-prune-reason {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rose);
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  padding: 6px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tot-output-box {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--electric-blue);
+  font-weight: 700;
+  background: #ffffff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
 }
 
 /* ═══════════════════════════════════════════════════════ DEBATE ARENA ═══ */

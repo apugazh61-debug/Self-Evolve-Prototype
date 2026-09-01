@@ -375,13 +375,18 @@
       <div class="glass-card controls-card">
         <div class="card-header">
           <span class="card-title">Tree of Thoughts (ToT) Multi-Branch Reasoning</span>
+          <span class="live-badge" style="background: rgba(124, 58, 237, 0.15); color: var(--violet);"><span class="pulse-dot"></span>ALPHA-SEARCH</span>
         </div>
         <div class="form-group">
           <label class="form-label">Select Task for Exploration</label>
           <select id="totTaskType" class="form-select"></select>
         </div>
+        <div class="form-group">
+          <label class="form-label">Branching Factor (Candidate Paths per Level) <span class="form-hint" id="totBranchHint">3</span></label>
+          <input type="range" id="totBranchFactor" class="form-range" min="2" max="5" value="3" />
+        </div>
         <div class="run-actions">
-          <button class="btn-primary" id="totRunBtn">
+          <button class="btn-primary" id="totRunBtn" style="background: linear-gradient(180deg, #a855f7 0%, #7c3aed 50%, #6d28d9 100%);">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 8v4M7 17l3-5M17 17l-3-5"/></svg>
             Explore Thought Tree
           </button>
@@ -390,11 +395,11 @@
 
       <div class="glass-card">
         <div class="card-header">
-          <span class="card-title">Reasoning Tree Visualizer</span>
+          <span class="card-title">Reasoning Tree Visualizer &amp; Heuristic Search</span>
           <span class="status-chip" id="totStatus"></span>
         </div>
         <div id="totTreeContainer" class="tot-tree-container">
-          <p class="empty-state">Click 'Explore Thought Tree' to generate and evaluate branching paths.</p>
+          <p class="empty-state">Click 'Explore Thought Tree' to generate, score, prune, and converge across branching reasoning paths.</p>
         </div>
       </div>
     </div>

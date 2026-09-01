@@ -339,8 +339,8 @@ def export_executive_report():
 async def run_tree_of_thoughts(req: ToTRequest):
     if req.task_type not in task_bank.GENERATORS:
         raise HTTPException(status_code=400, detail=f"Unknown task_type '{req.task_type}'")
-    await ws_manager.broadcast("tot_start", {"task_type": req.task_type})
-    result = tot_engine.solve(req.task_type)
+    await ws_manager.broadcast("tot_start", {"task_type": req.task_type, "branching_factor": req.branching_factor})
+    result = tot_engine.solve(req.task_type, branching_factor=req.branching_factor)
     await ws_manager.broadcast("tot_complete", {"task_type": req.task_type, "is_correct": result["is_correct"]})
     return result
 
